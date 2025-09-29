@@ -19,6 +19,22 @@ from utils.session_state import initialize_session_state
 from services.mcp_agent import render_chat_page
 from styles.professional_styles import apply_professional_styles
 
+# Inject custom CSS to remove top padding from all pages
+st.markdown(
+    """
+    <style>
+    /* Remove all top and bottom padding from the main container using Streamlit's data-testid attribute */
+    [data-testid="stAppViewContainer"] > div {
+        padding-top: 0rem !important;
+        padding-bottom: 0rem !important;
+    }
+    /* Hide header if present */
+    header { display: none; }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
 def add_sidebar_toggle():
     """Add sidebar toggle functionality when sidebar is collapsed"""
 
@@ -104,7 +120,6 @@ def disable_sidebar_collapse():
         max-width: 244px !important;
         position: relative !important;
     }
-
     /* Prevent any collapse animations */
     .css-1d391kg * {
         transition: none !important;

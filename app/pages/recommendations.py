@@ -124,31 +124,46 @@ def generate_recommendations(df, customer_profile, num_recommendations, approach
             progress_bar.progress(50)
 
             try:
+                st.info("🔧 **Initializing AI/GenAI Service...**")
                 openai_service = OpenAIService()
+                st.success("✅ AI service initialized successfully")
+
+                st.info("🧠 **Generating AI recommendations...**")
                 ai_recommendations = openai_service.generate_suburb_recommendations(
                     customer_profile, df, num_recommendations, approach
                 )
                 recommendations_data['ai_analysis'] = ai_recommendations
+                st.success("✅ AI analysis completed")
 
                 # Convert AI recommendations to primary ranking
+                st.info("🔄 **Converting AI recommendations to ranking...**")
                 ai_ranked_suburbs = convert_ai_to_ranked_list(ai_recommendations, df, num_recommendations)
 
                 if ai_ranked_suburbs is not None and len(ai_ranked_suburbs) > 0:
                     recommendations_data['primary_recommendations'] = ai_ranked_suburbs
-                    st.success(f"✅ AI recommendations: {len(ai_ranked_suburbs)} suburbs ranked")
+                    recommendations_data['recommendation_engine'] = 'ai_genai'
+                    st.success(f"✅ AI/GenAI recommendations: {len(ai_ranked_suburbs)} suburbs ranked")
 
                     # Store recommendations and finish
                     st.session_state.recommendations = recommendations_data
                     update_workflow_step(5)
 
                     progress_bar.progress(100)
-                    status_text.text("✅ AI recommendations completed!")
+                    status_text.text("✅ AI/GenAI recommendations completed!")
                     st.success(f"🎉 Found {len(ai_ranked_suburbs)} AI-recommended suburbs using {approach.lower()} approach")
+
+                    # Show which engine was used
+                    st.info("🤖 **Recommendation Engine Used:** AI/GenAI (OpenAI GPT-4)")
                     st.rerun()
                     return
+                else:
+                    st.warning("⚠️ AI generated recommendations but conversion failed")
 
             except Exception as ai_error:
-                st.warning(f"⚠️ AI analysis failed: {str(ai_error)}")
+                st.error(f"❌ AI/GenAI analysis failed: {str(ai_error)}")
+                st.error("**Error Details:**")
+                import traceback
+                st.code(traceback.format_exc())
                 recommendations_data['ai_analysis'] = {}
 
             # Method 2: Rule-based fallback (only if AI fails)
@@ -158,11 +173,13 @@ def generate_recommendations(df, customer_profile, num_recommendations, approach
             rule_based_recs = generate_rule_based_recommendations(
                 df, customer_profile, num_recommendations, approach
             )
-            recommendations_data['rule_based'] = rule_based_recs
+            # Store as primary recommendations when AI fails
+            recommendations_data['primary_recommendations'] = rule_based_recs
+            recommendations_data['recommendation_engine'] = 'rule_based'
 
             progress_bar.progress(100)
             status_text.text("✅ All recommendations generated!")
-            st.success(f"🎉 Found {len(rule_based_recs)} recommended suburbs using {approach.lower()} approach")
+            st.success(f"🎉 Found {len(rule_based_recs)} recommended suburbs using {approach.lower()} approach (rule-based fallback)")
 
             # Store recommendations
             st.session_state.recommendations = recommendations_data
@@ -183,23 +200,33 @@ def convert_ai_to_ranked_list(ai_recommendations, df, num_recommendations):
         ai_suburbs = ai_recommendations.get('recommended_suburbs', [])
 
         if not ai_suburbs:
+            st.warning("⚠️ No recommended suburbs found in AI response")
             return None
 
         # Create a list to store matched suburbs with AI data
         ranked_suburbs = []
 
-        for ai_suburb in ai_suburbs[:num_recommendations]:
+        for idx, ai_suburb in enumerate(ai_suburbs[:num_recommendations]):
             suburb_name = ai_suburb.get('suburb_name', '')
-            ai_score = float(ai_suburb.get('score', 0))
+            ai_score = ai_suburb.get('score', 0)
+
+            # Convert score to float
+            try:
+                ai_score = float(ai_score) if ai_score else 0
+            except (ValueError, TypeError):
+                ai_score = 0
 
             # Find matching suburb in original data
+            # Determine the correct suburb column name
+            suburb_col = 'Suburb Name' if 'Suburb Name' in df.columns else 'Suburb'
+
             # Try exact match first
-            matched_rows = df[df['Suburb'].str.contains(suburb_name, case=False, na=False)]
+            matched_rows = df[df[suburb_col].str.contains(suburb_name, case=False, na=False)]
 
             if matched_rows.empty:
                 # Try partial match
                 for _, row in df.iterrows():
-                    if suburb_name.lower() in str(row['Suburb']).lower():
+                    if suburb_name.lower() in str(row[suburb_col]).lower():
                         matched_rows = pd.DataFrame([row])
                         break
 
@@ -214,6 +241,43 @@ def convert_ai_to_ranked_list(ai_recommendations, df, num_recommendations):
                 suburb_row['Rank'] = len(ranked_suburbs) + 1
 
                 ranked_suburbs.append(suburb_row)
+            else:
+                # No match found - create synthetic entry from AI data
+                # Create synthetic row with AI data
+                synthetic_row = pd.Series({
+                    suburb_col: suburb_name,
+                    'State': 'NSW',  # Default for Sydney suburbs
+                    'AI_Score': ai_score,
+                    'AI_Reasons': '; '.join(ai_suburb.get('reasons', [])),
+                    'Investment_Potential': ai_suburb.get('investment_potential', 'medium'),
+                    'Rank': len(ranked_suburbs) + 1
+                })
+
+                # Add key metrics from AI if available
+                key_metrics = ai_suburb.get('key_metrics', {})
+                if key_metrics:
+                    # Try to parse median price
+                    price_str = key_metrics.get('median_price', '').replace('$', '').replace(',', '')
+                    try:
+                        synthetic_row['Median Price'] = float(price_str)
+                    except (ValueError, TypeError):
+                        synthetic_row['Median Price'] = 750000  # Default
+
+                    # Try to parse rental yield
+                    yield_str = key_metrics.get('rental_yield', '').replace('%', '')
+                    try:
+                        synthetic_row['Rental Yield on Houses'] = float(yield_str)
+                    except (ValueError, TypeError):
+                        synthetic_row['Rental Yield on Houses'] = 4.5  # Default
+
+                    # Try to parse growth rate
+                    growth_str = key_metrics.get('growth_potential', '').replace('%', '')
+                    try:
+                        synthetic_row['10 yr Avg. Annual Growth'] = float(growth_str)
+                    except (ValueError, TypeError):
+                        synthetic_row['10 yr Avg. Annual Growth'] = 6.0  # Default
+
+                ranked_suburbs.append(synthetic_row)
 
         if ranked_suburbs:
             result_df = pd.DataFrame(ranked_suburbs)
@@ -361,16 +425,28 @@ def display_top_recommendations(recommendations):
     ml_recs = recommendations.get('ml_recommendations')
     rule_recs = recommendations.get('rule_based')
 
-    # Use AI first, then ML, then rule-based as fallback
-    if ai_recs is not None and not ai_recs.empty:
+    # Use primary recommendations and determine engine type
+    primary_recs = recommendations.get('primary_recommendations')
+    engine_used = recommendations.get('recommendation_engine', 'unknown')
+
+    if primary_recs is not None and not primary_recs.empty:
+        top_suburbs = primary_recs
+        if engine_used == 'ai_genai':
+            engine_type = "🤖 AI/GenAI-Powered"
+        elif engine_used == 'rule_based':
+            engine_type = "📊 Rule-Based"
+        else:
+            engine_type = "🔍 Primary Recommendations"
+    # Legacy fallback for old data structure
+    elif ai_recs is not None and not ai_recs.empty:
         top_suburbs = ai_recs
-        engine_type = "🤖 AI-Powered"
+        engine_type = "🤖 AI-Powered (Legacy)"
     elif ml_recs is not None and not ml_recs.empty:
         top_suburbs = ml_recs
-        engine_type = "🤖 ML-Powered"
+        engine_type = "🤖 ML-Powered (Legacy)"
     else:
         top_suburbs = rule_recs
-        engine_type = "📊 Rule-Based"
+        engine_type = "📊 Rule-Based (Legacy)"
 
     if top_suburbs is not None and not top_suburbs.empty:
         # Show engine type
@@ -396,12 +472,12 @@ def display_top_recommendations(recommendations):
 
         st.markdown("---")
 
-    # Get the best recommendations
-    ml_recs = recommendations.get('ml_recommendations')
-    rule_recs = recommendations.get('rule_based')
-
-    # Use ML recommendations if available, otherwise rule-based
-    top_suburbs = ml_recs if ml_recs is not None and not ml_recs.empty else rule_recs
+    # Use primary recommendations first (this contains AI or rule-based data)
+    if top_suburbs is None or top_suburbs.empty:
+        # Fallback to legacy structure
+        ml_recs = recommendations.get('ml_recommendations')
+        rule_recs = recommendations.get('rule_based')
+        top_suburbs = ml_recs if ml_recs is not None and not ml_recs.empty else rule_recs
 
     if top_suburbs is None or top_suburbs.empty:
         st.warning("No recommendations available. Please regenerate.")
@@ -409,12 +485,21 @@ def display_top_recommendations(recommendations):
 
     # Display top suburbs with enhanced information
     for idx, (_, suburb) in enumerate(top_suburbs.head(10).iterrows(), 1):
-        suburb_name = suburb.get('Suburb', 'Unknown')
+        # Handle both 'Suburb' and 'Suburb Name' columns
+        suburb_name = suburb.get('Suburb Name', suburb.get('Suburb', 'Unknown'))
         state = suburb.get('State', '')
 
         # Create a score indicator
         score_indicator = ""
-        if 'Investment_Score_Predicted' in suburb:
+        if 'AI_Score' in suburb:
+            score = suburb['AI_Score'] / 100  # AI scores are 0-100, normalize to 0-1
+            if score > 0.85:
+                score_indicator = "🌟"
+            elif score > 0.75:
+                score_indicator = "⭐"
+            else:
+                score_indicator = "🤖"
+        elif 'Investment_Score_Predicted' in suburb:
             score = suburb['Investment_Score_Predicted']
             if score > 0.7:
                 score_indicator = "🌟"
@@ -454,7 +539,21 @@ def display_top_recommendations(recommendations):
                         st.metric("Distance to CBD", f"{suburb['Distance (km) to CBD']:.0f} km")
 
                 # Investment potential
-                if 'Investment_Score_Predicted' in suburb:
+                if 'AI_Score' in suburb:
+                    score = suburb['AI_Score']
+                    # Normalize score to 0-1 range for progress bar (AI scores are 0-100)
+                    normalized_score = max(0.0, min(1.0, score / 100))
+                    st.progress(normalized_score)
+                    st.caption(f"🤖 AI Investment Score: {score:.0f}/100")
+
+                    # Show AI reasoning
+                    if 'AI_Reasons' in suburb and suburb['AI_Reasons']:
+                        with st.expander("🤖 AI Reasoning"):
+                            reasons = suburb['AI_Reasons'].split('; ')
+                            for reason in reasons:
+                                st.write(f"• {reason}")
+
+                elif 'Investment_Score_Predicted' in suburb:
                     score = suburb['Investment_Score_Predicted']
                     # Normalize score to 0-1 range for progress bar
                     normalized_score = max(0.0, min(1.0, score))
@@ -511,7 +610,13 @@ def create_comparison_chart(top_suburbs):
     # Create subplot
     fig = go.Figure()
 
-    suburbs = top_suburbs['Suburb'].tolist() if 'Suburb' in top_suburbs.columns else [f"Suburb {i+1}" for i in range(len(top_suburbs))]
+    # Handle both 'Suburb' and 'Suburb Name' columns
+    if 'Suburb Name' in top_suburbs.columns:
+        suburbs = top_suburbs['Suburb Name'].tolist()
+    elif 'Suburb' in top_suburbs.columns:
+        suburbs = top_suburbs['Suburb'].tolist()
+    else:
+        suburbs = [f"Suburb {i+1}" for i in range(len(top_suburbs))]
 
     for metric in metrics:
         fig.add_trace(go.Bar(
@@ -732,21 +837,41 @@ def export_recommendations(recommendations):
 
     st.subheader("📥 Export Recommendations")
 
-    # Prepare export data
+    # Prepare export data with proper naming based on engine used
     export_data = {}
+    engine_used = recommendations.get('recommendation_engine', 'unknown')
 
+    # Primary recommendations with engine-specific naming
+    if 'primary_recommendations' in recommendations and recommendations['primary_recommendations'] is not None:
+        if engine_used == 'ai_genai':
+            export_data['AI_GenAI_Recommendations'] = recommendations['primary_recommendations']
+        elif engine_used == 'rule_based':
+            export_data['Rule_Based_Recommendations'] = recommendations['primary_recommendations']
+        else:
+            export_data['Primary_Recommendations'] = recommendations['primary_recommendations']
+
+    # Legacy support for old structure
     if 'ml_recommendations' in recommendations and recommendations['ml_recommendations'] is not None:
         export_data['ML_Recommendations'] = recommendations['ml_recommendations']
 
     if 'rule_based' in recommendations and recommendations['rule_based'] is not None:
-        export_data['Rule_Based_Recommendations'] = recommendations['rule_based']
+        export_data['Legacy_Rule_Based'] = recommendations['rule_based']
 
-    if 'ai_analysis' in recommendations:
+    # AI analysis (metadata)
+    if 'ai_analysis' in recommendations and recommendations['ai_analysis']:
         export_data['AI_Analysis'] = recommendations['ai_analysis']
+
+    # Display engine information
+    if engine_used != 'unknown':
+        engine_display = {
+            'ai_genai': '🤖 AI/GenAI Engine',
+            'rule_based': '📊 Rule-Based Engine',
+            'ml': '🧠 Machine Learning Engine'
+        }
+        st.info(f"**Recommendation Engine Used:** {engine_display.get(engine_used, engine_used)}")
 
     # CSV export for numerical data
     if export_data:
-        # Export ML/Rule-based recommendations as CSV
         for key, data in export_data.items():
             if isinstance(data, pd.DataFrame) and not data.empty:
                 csv_data = data.to_csv(index=False)
@@ -755,6 +880,17 @@ def export_recommendations(recommendations):
                     csv_data,
                     f"{key.lower()}.csv",
                     "text/csv",
+                    key=f"download_{key}"
+                )
+            elif key == 'AI_Analysis' and isinstance(data, dict):
+                # Export AI analysis as JSON
+                import json
+                json_data = json.dumps(data, indent=2)
+                st.download_button(
+                    f"📄 Download {key.replace('_', ' ')} (JSON)",
+                    json_data,
+                    f"{key.lower()}.json",
+                    "application/json",
                     key=f"download_{key}"
                 )
 

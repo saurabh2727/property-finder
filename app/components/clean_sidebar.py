@@ -130,7 +130,6 @@ def render_clean_sidebar():
         st.markdown(button_style, unsafe_allow_html=True)
 
         # Navigation buttons with cleaner approach
-        current_page = st.session_state.get('current_page', 'home')
 
         nav_items = [
             ('home', 'Dashboard'),
@@ -172,21 +171,6 @@ def render_clean_sidebar():
                 <span style="font-size: 0.75rem; color: #6b7280; margin-left: auto;">{status_text}</span>
             </div>
             """, unsafe_allow_html=True)
-
-        # Help section - minimal
-        st.markdown("---")
-
-        with st.expander("Help & Support"):
-            st.markdown("""
-            **Quick Start:**
-            1. Upload customer profile
-            2. Import market data
-            3. Run analysis
-            4. Review recommendations
-            5. Generate reports
-
-            **Support:** support@propertyinsight.com
-            """)
 
         # Reset functionality
         st.markdown("---")

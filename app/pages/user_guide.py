@@ -182,34 +182,44 @@ def render_user_guide_page():
 
     with col1:
         st.markdown("""
-        **Purpose**: Generate intelligent, contextual investment recommendations using advanced AI analysis.
+        **Purpose**: Generate intelligent, contextual investment recommendations using advanced AI/GenAI analysis.
 
-        **AI Analysis Process:**
-        - Combines client profile with market data analysis
-        - Applies machine learning models trained on successful property investments
-        - Considers macro-economic factors and market trends
+        **Multi-Engine Recommendation System:**
+
+        **🤖 Primary: AI/GenAI Engine (OpenAI GPT-4)**
+        - Natural language processing of customer profiles
+        - Contextual analysis of market data and trends
+        - Intelligent suburb matching based on client goals
         - Generates personalized investment strategies
+        - Provides detailed reasoning for each recommendation
 
-        **Recommendation Types:**
+        **📊 Fallback: Rule-Based Engine**
+        - Mathematical scoring algorithms
+        - Weighted criteria analysis (growth, yield, risk, fit)
+        - Automated when AI engine is unavailable
+        - Ensures system reliability and consistency
 
-        **Primary Recommendations (Top 3-5 suburbs)**
-        - Best overall matches for client criteria
-        - Detailed investment rationale
-        - Expected returns and timelines
-        - Risk factors and mitigation strategies
+        **🧠 Additional: ML Engine (Optional)**
+        - Machine learning models with feature importance
+        - SHAP explainability for model interpretability
+        - Advanced analytics and insights
 
-        **Alternative Options**
-        - Slightly different criteria matches
-        - Higher risk/higher return opportunities
-        - Budget-friendly alternatives
+        **Recommendation Output:**
 
-        **Strategic Insights**
-        - Market timing recommendations
-        - Portfolio diversification suggestions
-        - Long-term investment strategies
+        **Primary Recommendations**
+        - Top-ranked suburbs based on client criteria
+        - Detailed investment rationale and scoring
+        - Expected returns and risk assessments
+        - Location preferences and budget alignment
+
+        **Export Options:**
+        - `ai_genai_recommendations.csv` (when AI used)
+        - `rule_based_recommendations.csv` (when fallback used)
+        - `ai_analysis.json` (detailed AI insights)
 
         **What You'll Review:**
-        - AI-generated suburb recommendations
+        - Engine type used for recommendations
+        - AI-generated suburb recommendations and reasoning
         - Investment rationale and supporting data
         - Risk assessments and market timing advice
         - Projected returns and cash flow analysis
@@ -217,15 +227,22 @@ def render_user_guide_page():
 
     with col2:
         st.info("""
-        **AI Considers:**
+        **System Features:**
+        - Multi-engine architecture
+        - Automatic fallback mechanisms
+        - Engine transparency
+        - Accurate export naming
+
+        **AI/GenAI Considers:**
         - Client investment goals
         - Risk tolerance
         - Budget constraints
+        - Preferred locations
         - Market trends
         - Economic indicators
-        - Historical performance
 
         **Outputs:**
+        - Engine-specific filenames
         - Ranked recommendations
         - Investment rationale
         - Risk assessments
