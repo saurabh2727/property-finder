@@ -172,11 +172,53 @@ def render_clean_sidebar():
             </div>
             """, unsafe_allow_html=True)
 
-        # Reset functionality
+        # Session persistence section
         st.markdown("---")
-        if st.button("Reset Session", help="Clear all data and start fresh"):
-            for key in list(st.session_state.keys()):
-                if key not in ['current_page']:
-                    del st.session_state[key]
-            st.session_state.workflow_step = 1
-            st.rerun()
+
+        # Import here to avoid circular imports
+        try:
+            from utils.session_state import get_session_status, backup_session_data, recover_session_data, reset_session_state
+
+            # Session status indicator
+            status = get_session_status()
+
+            with st.expander("🔄 Session Status"):
+                st.write(f"**Workflow Step:** {status['workflow_step']}/5")
+                st.write(f"**Profile Generated:** {'✅' if status['profile_generated'] else '❌'}")
+                st.write(f"**Data Uploaded:** {'✅' if status['data_uploaded'] else '❌'}")
+                st.write(f"**Analysis Complete:** {'✅' if status['analysis_complete'] else '❌'}")
+                st.write(f"**Backup Available:** {'✅' if status['backup_available'] else '❌'}")
+
+                # Manual backup button
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.button("💾 Backup", help="Create manual backup", key="manual_backup"):
+                        if backup_session_data():
+                            st.success("✅ Backup created!")
+                        else:
+                            st.error("❌ Backup failed!")
+
+                with col2:
+                    if st.button("🔄 Recover", help="Restore from backup", key="manual_recover"):
+                        if recover_session_data():
+                            st.success("✅ Session restored!")
+                            st.rerun()
+                        else:
+                            st.warning("⚠️ No backup found!")
+
+            # Reset functionality
+            st.markdown("---")
+            if st.button("🗑️ Reset Session", help="Clear all data and start fresh"):
+                reset_session_state()
+                st.success("Session reset successfully!")
+                st.rerun()
+
+        except ImportError:
+            # Fallback to original reset functionality
+            st.markdown("---")
+            if st.button("Reset Session", help="Clear all data and start fresh"):
+                for key in list(st.session_state.keys()):
+                    if key not in ['current_page']:
+                        del st.session_state[key]
+                st.session_state.workflow_step = 1
+                st.rerun()

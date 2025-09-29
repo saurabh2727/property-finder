@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from utils.document_processor import DocumentProcessor
 from utils.htag_processor import HtAGProcessor
-from utils.session_state import update_workflow_step
+from utils.session_state import update_workflow_step, save_suburb_data, backup_session_data
 import plotly.express as px
 import plotly.graph_objects as go
 
@@ -222,9 +222,8 @@ def process_uploaded_data(uploaded_file):
                 # Clean the data
                 df_cleaned = DocumentProcessor.clean_suburb_data(df)
 
-                # Store in session state
-                st.session_state.suburb_data = df_cleaned
-                st.session_state.data_uploaded = True
+                # Store in session state with backup
+                save_suburb_data(df_cleaned)
                 update_workflow_step(3)
 
                 # Show final success
@@ -379,8 +378,7 @@ def show_manual_data_entry():
         st.dataframe(df_manual, use_container_width=True)
 
         if st.button("💾 Save Manual Data"):
-            st.session_state.suburb_data = df_manual
-            st.session_state.data_uploaded = True
+            save_suburb_data(df_manual)
             update_workflow_step(3)
             st.success("Manual data saved successfully!")
             st.rerun()
@@ -401,8 +399,7 @@ def load_sample_data():
         '10 yr Avg. Annual Growth': [6.2, 5.8, 7.1, 8.2, 4.9, 5.5]
     })
 
-    st.session_state.suburb_data = sample_data
-    st.session_state.data_uploaded = True
+    save_suburb_data(sample_data)
     update_workflow_step(3)
 
     st.success("✅ Sample data loaded successfully!")
@@ -421,9 +418,8 @@ def load_converted_data():
         if converted_data_path.exists():
             converted_data = pd.read_csv(converted_data_path)
 
-            # Store in session state
-            st.session_state.suburb_data = converted_data
-            st.session_state.data_uploaded = True
+            # Store in session state with backup
+            save_suburb_data(converted_data)
             update_workflow_step(3)
 
             st.success("⚡ Converted HtAG data loaded successfully!")

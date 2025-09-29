@@ -1,7 +1,7 @@
 import streamlit as st
 from utils.document_processor import DocumentProcessor
 from services.openai_service import OpenAIService
-from utils.session_state import update_workflow_step
+from utils.session_state import update_workflow_step, save_customer_profile, backup_session_data
 import json
 
 def render_clean_customer_profile_page():
@@ -125,8 +125,7 @@ def analyze_customer_document(uploaded_file):
             customer_profile = openai_service.analyze_customer_profile(document_content)
 
             if customer_profile:
-                st.session_state.customer_profile = customer_profile
-                st.session_state.profile_generated = True
+                save_customer_profile(customer_profile)
                 update_workflow_step(2)
 
                 st.success("Customer profile generated successfully")
@@ -249,8 +248,7 @@ def show_manual_profile_form():
                 "additional_notes": additional_notes
             }
 
-            st.session_state.customer_profile = profile
-            st.session_state.profile_generated = True
+            save_customer_profile(profile)
             update_workflow_step(2)
 
             st.success("Customer profile saved successfully")
@@ -356,9 +354,8 @@ def load_sample_profile():
             with open(sample_profile_path, 'r') as f:
                 sample_profile = json.load(f)
 
-            # Store in session state
-            st.session_state.customer_profile = sample_profile
-            st.session_state.profile_generated = True
+            # Store in session state with backup
+            save_customer_profile(sample_profile)
             update_workflow_step(2)
 
             st.success("⚡ Sample customer profile loaded successfully!")

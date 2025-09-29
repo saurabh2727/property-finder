@@ -4,7 +4,7 @@ import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 from services.openai_service import OpenAIService
-from utils.session_state import update_workflow_step
+from utils.session_state import update_workflow_step, save_recommendations, backup_session_data
 from models.ml_recommender import PropertyRecommendationEngine
 
 def render_recommendations_page():
@@ -71,8 +71,14 @@ def generate_new_recommendations(df, customer_profile):
     with col1:
         st.markdown("#### Recommendation Settings")
 
-        # Number of recommendations
-        num_recommendations = st.slider("Number of Recommendations", 5, 20, 10)
+        # Number of recommendations - made more prominent
+        st.markdown("#### 🎯 Configuration")
+        num_recommendations = st.slider(
+            "**Number of Suburbs to Recommend**",
+            min_value=5, max_value=20, value=10, step=1,
+            help="Select how many suburbs you want in your recommendations (5-20)"
+        )
+        st.caption(f"✅ Will generate {num_recommendations} suburb recommendations")
 
         # Recommendation approach
         approach = st.selectbox(
@@ -85,6 +91,18 @@ def generate_new_recommendations(df, customer_profile):
             generate_recommendations(df, customer_profile, num_recommendations, approach)
 
     with col2:
+        # Prominent info box about suburb count
+        st.success(f"""
+        🎯 **Generating {num_recommendations} Suburb Recommendations**
+
+        The AI system will analyze your customer profile and market data to identify the top {num_recommendations} suburbs that best match the investment criteria.
+
+        **Recommendation Sizing:**
+        - **5-8 suburbs:** Quick focused analysis
+        - **10-12 suburbs:** Balanced selection (recommended)
+        - **15-20 suburbs:** Comprehensive market coverage
+        """)
+
         st.markdown("#### Approach Details")
 
         approach_details = {
@@ -145,7 +163,7 @@ def generate_recommendations(df, customer_profile, num_recommendations, approach
                     st.success(f"✅ AI/GenAI recommendations: {len(ai_ranked_suburbs)} suburbs ranked")
 
                     # Store recommendations and finish
-                    st.session_state.recommendations = recommendations_data
+                    save_recommendations(recommendations_data)
                     update_workflow_step(5)
 
                     progress_bar.progress(100)
@@ -181,8 +199,8 @@ def generate_recommendations(df, customer_profile, num_recommendations, approach
             status_text.text("✅ All recommendations generated!")
             st.success(f"🎉 Found {len(rule_based_recs)} recommended suburbs using {approach.lower()} approach (rule-based fallback)")
 
-            # Store recommendations
-            st.session_state.recommendations = recommendations_data
+            # Store recommendations with backup
+            save_recommendations(recommendations_data)
             update_workflow_step(5)
 
             st.success("🎉 Recommendations generated successfully!")
@@ -692,16 +710,40 @@ def display_detailed_insights(recommendations):
 
     st.subheader("📊 Detailed Investment Insights")
 
-    # Get recommendations data
+    # Get recommendations data with support for new structure
+    primary_recs = recommendations.get('primary_recommendations')
     ml_recs = recommendations.get('ml_recommendations')
     rule_recs = recommendations.get('rule_based')
 
-    # Use best available data
-    data = ml_recs if ml_recs is not None and not ml_recs.empty else rule_recs
+    # Use best available data (prioritize primary recommendations)
+    if primary_recs is not None and not primary_recs.empty:
+        data = primary_recs
+        engine_used = recommendations.get('recommendation_engine', 'primary')
+    elif ml_recs is not None and not ml_recs.empty:
+        data = ml_recs
+        engine_used = 'ml'
+    else:
+        data = rule_recs
+        engine_used = 'rule_based'
 
     if data is None or data.empty:
         st.info("No detailed insights available")
+
+        # Debug info for troubleshooting
+        with st.expander("🔧 Debug Information"):
+            st.write("Available recommendation keys:", list(recommendations.keys()) if recommendations else "None")
+            st.write("Recommendations data:", str(recommendations)[:200] + "..." if recommendations else "None")
         return
+
+    # Show which engine was used
+    engine_display = {
+        'ai_genai': '🤖 AI/GenAI Engine (OpenAI GPT-4)',
+        'rule_based': '📊 Rule-Based Analysis Engine',
+        'ml': '🧠 Machine Learning Engine',
+        'primary': '🔍 Primary Recommendations'
+    }
+    st.info(f"**Analysis Engine:** {engine_display.get(engine_used, engine_used)}")
+    st.markdown("---")
 
     # Market analysis
     tab1, tab2, tab3, tab4 = st.tabs(["Market Overview", "Risk Analysis", "Performance Metrics", "ML Explainability"])
@@ -719,29 +761,153 @@ def display_detailed_insights(recommendations):
         display_ml_explainability(recommendations)
 
 def display_market_overview(data):
-    """Display market overview analysis"""
+    """Display market overview analysis with AI insights"""
 
+    # Key metrics row
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+        suburb_count = len(data)
+        st.metric("📊 Total Recommendations", suburb_count)
+
+    with col2:
+        if 'Median Price' in data.columns and data['Median Price'].notna().sum() > 0:
+            avg_price = data['Median Price'].mean()
+            st.metric("💰 Average Price", f"${avg_price:,.0f}")
+        else:
+            st.metric("💰 Average Price", "N/A")
+
+    with col3:
+        if 'Rental Yield on Houses' in data.columns and data['Rental Yield on Houses'].notna().sum() > 0:
+            avg_yield = data['Rental Yield on Houses'].mean()
+            st.metric("📈 Average Yield", f"{avg_yield:.1f}%")
+        else:
+            st.metric("📈 Average Yield", "N/A")
+
+    with col4:
+        if '10 yr Avg. Annual Growth' in data.columns and data['10 yr Avg. Annual Growth'].notna().sum() > 0:
+            avg_growth = data['10 yr Avg. Annual Growth'].mean()
+            st.metric("📊 Average Growth", f"{avg_growth:.1f}%")
+        else:
+            st.metric("📊 Average Growth", "N/A")
+
+    st.markdown("---")
+
+    # Charts section
     col1, col2 = st.columns(2)
 
     with col1:
         st.markdown("#### Price Distribution")
-        if 'Median Price' in data.columns:
-            fig = px.histogram(data, x='Median Price', title="Recommended Suburbs - Price Range")
+        if 'Median Price' in data.columns and data['Median Price'].notna().sum() > 0:
+            fig = px.histogram(
+                data,
+                x='Median Price',
+                title="Recommended Suburbs - Price Range",
+                color_discrete_sequence=['#3b82f6']
+            )
+            fig.update_layout(showlegend=False)
             st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("Price data not available for visualization")
 
     with col2:
         st.markdown("#### Geographic Spread")
         if 'State' in data.columns:
             state_counts = data['State'].value_counts()
-            fig = px.pie(values=state_counts.values, names=state_counts.index,
-                        title="Recommendations by State")
+            if len(state_counts) > 0:
+                fig = px.pie(
+                    values=state_counts.values,
+                    names=state_counts.index,
+                    title="Recommendations by State",
+                    color_discrete_sequence=px.colors.qualitative.Set3
+                )
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("State data not available")
+        else:
+            st.info("Geographic data not available")
+
+    # AI-specific insights
+    if 'AI_Score' in data.columns:
+        st.markdown("#### 🤖 AI Analysis Insights")
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            # AI Score distribution
+            fig = px.histogram(
+                data,
+                x='AI_Score',
+                title="AI Investment Score Distribution",
+                color_discrete_sequence=['#10b981']
+            )
+            fig.update_layout(showlegend=False)
             st.plotly_chart(fig, use_container_width=True)
 
+        with col2:
+            # Investment potential distribution
+            if 'Investment_Potential' in data.columns:
+                potential_counts = data['Investment_Potential'].value_counts()
+                fig = px.bar(
+                    x=potential_counts.index,
+                    y=potential_counts.values,
+                    title="Investment Potential Categories",
+                    color=potential_counts.index,
+                    color_discrete_map={
+                        'high': '#10b981',
+                        'medium': '#f59e0b',
+                        'low': '#ef4444'
+                    }
+                )
+                fig.update_layout(showlegend=False)
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("Investment potential data not available")
+
+        # Top AI reasons
+        if 'AI_Reasons' in data.columns:
+            st.markdown("#### 🧠 Top Investment Factors")
+            all_reasons = []
+            for reasons_str in data['AI_Reasons'].dropna():
+                if isinstance(reasons_str, str):
+                    reasons = [r.strip() for r in reasons_str.split(';')]
+                    all_reasons.extend(reasons)
+
+            if all_reasons:
+                from collections import Counter
+                reason_counts = Counter(all_reasons)
+                top_reasons = reason_counts.most_common(8)
+
+                reasons_df = pd.DataFrame(top_reasons, columns=['Factor', 'Frequency'])
+                fig = px.bar(
+                    reasons_df,
+                    x='Frequency',
+                    y='Factor',
+                    orientation='h',
+                    title="Most Common Investment Factors",
+                    color_discrete_sequence=['#8b5cf6']
+                )
+                fig.update_layout(showlegend=False, height=400)
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("AI reasoning data not available")
+
     # Summary statistics
-    st.markdown("#### Summary Statistics")
-    numeric_cols = data.select_dtypes(include=[np.number]).columns
-    if len(numeric_cols) > 0:
-        st.dataframe(data[numeric_cols].describe(), use_container_width=True)
+    st.markdown("#### 📊 Detailed Statistics")
+
+    # Select key columns for summary
+    key_columns = []
+    potential_cols = ['Median Price', 'Rental Yield on Houses', '10 yr Avg. Annual Growth', 'AI_Score', 'Distance (km) to CBD']
+
+    for col in potential_cols:
+        if col in data.columns:
+            key_columns.append(col)
+
+    if key_columns:
+        summary_stats = data[key_columns].describe()
+        st.dataframe(summary_stats, use_container_width=True)
+    else:
+        st.info("Statistical summary not available for current data structure")
 
 def display_risk_analysis(data):
     """Display risk analysis"""

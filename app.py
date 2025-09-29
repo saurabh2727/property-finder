@@ -145,8 +145,13 @@ def disable_sidebar_collapse():
     """, unsafe_allow_html=True)
 
 def main():
-    # Initialize session state
+    # Initialize session state with recovery
     initialize_session_state()
+
+    # Show session recovery notification if applicable
+    if st.session_state.get('session_backup_available', False) and not st.session_state.get('recovery_notification_shown', False):
+        st.info("🔄 **Session Restored**: Your previous work has been automatically recovered.")
+        st.session_state.recovery_notification_shown = True
 
     # Apply professional styles
     apply_professional_styles()

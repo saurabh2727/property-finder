@@ -9,6 +9,17 @@ from datetime import datetime
 import base64
 from io import BytesIO
 import matplotlib.pyplot as plt
+from reportlab.lib.pagesizes import letter, A4
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image, PageBreak
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from reportlab.lib import colors
+from reportlab.graphics.shapes import Drawing
+from reportlab.graphics.charts.lineplots import LinePlot
+from reportlab.graphics.charts.barcharts import VerticalBarChart
+import tempfile
+import os
+from utils.session_state import backup_session_data
 
 def render_reports_page():
     """Render the comprehensive reports page"""
@@ -48,7 +59,15 @@ def render_reports_page():
         render_custom_reports()
 
 def check_prerequisites():
-    """Check if all required data is available"""
+    """Check if all required data is available with session recovery"""
+
+    # Import session management functions
+    from utils.session_state import recover_session_data
+
+    # Try to recover session data if missing
+    if not st.session_state.get('recommendations') and not st.session_state.get('profile_generated'):
+        if recover_session_data():
+            st.info("🔄 Session data recovered successfully!")
 
     missing_components = []
 
@@ -63,6 +82,21 @@ def check_prerequisites():
 
     if missing_components:
         st.warning(f"⚠️ Missing required components: {', '.join(missing_components)}")
+
+        # Show session recovery option
+        with st.expander("🔧 Troubleshooting"):
+            st.write("**Session Status:**")
+            st.write(f"- Profile Generated: {'✅' if st.session_state.get('profile_generated') else '❌'}")
+            st.write(f"- Data Uploaded: {'✅' if st.session_state.get('data_uploaded') else '❌'}")
+            st.write(f"- Recommendations Available: {'✅' if st.session_state.get('recommendations') else '❌'}")
+            st.write(f"- Backup Available: {'✅' if st.session_state.get('session_backup_available') else '❌'}")
+
+            if st.button("🔄 Try Session Recovery"):
+                if recover_session_data():
+                    st.success("✅ Data recovered!")
+                    st.rerun()
+                else:
+                    st.warning("⚠️ No recoverable data found")
 
         col1, col2, col3 = st.columns(3)
         with col1:
@@ -724,8 +758,243 @@ def display_customer_profile_summary(customer_profile):
         st.write(f"**Target Yield:** {investment_goals.get('target_yield', 'N/A')}")
 
 def generate_pdf_report():
-    """Generate PDF report (placeholder)"""
-    st.info("🚧 PDF generation feature is under development. Coming soon!")
+    """Generate comprehensive PDF report"""
+    try:
+        with st.spinner("📄 Generating PDF report..."):
+            # Get data from session state
+            customer_profile = st.session_state.get('customer_profile', {})
+            suburb_data = st.session_state.get('suburb_data')
+            recommendations = st.session_state.get('recommendations', {})
+
+            if not customer_profile and not recommendations:
+                st.warning("⚠️ No data available to generate report. Please complete the analysis first.")
+                return
+
+            # Create temporary PDF file
+            buffer = BytesIO()
+            doc = SimpleDocTemplate(buffer, pagesize=A4,
+                                  rightMargin=72, leftMargin=72,
+                                  topMargin=72, bottomMargin=18)
+
+            # Build PDF content
+            story = []
+            styles = getSampleStyleSheet()
+
+            # Custom styles
+            title_style = ParagraphStyle(
+                'CustomTitle',
+                parent=styles['Heading1'],
+                fontSize=24,
+                spaceAfter=30,
+                textColor=colors.HexColor('#1f2937'),
+                alignment=1  # Center alignment
+            )
+
+            heading_style = ParagraphStyle(
+                'CustomHeading',
+                parent=styles['Heading2'],
+                fontSize=16,
+                spaceBefore=20,
+                spaceAfter=12,
+                textColor=colors.HexColor('#3b82f6')
+            )
+
+            # Title page
+            story.append(Paragraph("Property Investment Analysis Report", title_style))
+            story.append(Spacer(1, 20))
+            story.append(Paragraph(f"Generated on: {datetime.now().strftime('%B %d, %Y')}", styles['Normal']))
+            story.append(Spacer(1, 40))
+
+            # Executive Summary
+            story.append(Paragraph("Executive Summary", heading_style))
+
+            # Get recommendation data with support for new structure
+            primary_recs = recommendations.get('primary_recommendations')
+            engine_used = recommendations.get('recommendation_engine', 'unknown')
+
+            if primary_recs is not None and not primary_recs.empty:
+                top_suburbs = primary_recs.head(5)
+                engine_display = {
+                    'ai_genai': 'AI/GenAI Engine (OpenAI GPT-4)',
+                    'rule_based': 'Rule-Based Analysis Engine',
+                    'ml': 'Machine Learning Engine'
+                }
+
+                story.append(Paragraph(f"Analysis conducted using: {engine_display.get(engine_used, engine_used)}", styles['Normal']))
+                story.append(Spacer(1, 12))
+
+                story.append(Paragraph(f"Our analysis has identified {len(top_suburbs)} top investment opportunities that align with your investment criteria:", styles['Normal']))
+                story.append(Spacer(1, 12))
+
+                # Top suburbs summary
+                for idx, (_, suburb) in enumerate(top_suburbs.iterrows(), 1):
+                    suburb_name = suburb.get('Suburb Name', suburb.get('Suburb', f'Suburb {idx}'))
+                    state = suburb.get('State', '')
+
+                    # Get metrics
+                    price = suburb.get('Median Price', 0)
+                    yield_val = suburb.get('Rental Yield on Houses', 0)
+                    growth = suburb.get('10 yr Avg. Annual Growth', 0)
+
+                    suburb_text = f"<b>{idx}. {suburb_name}, {state}</b><br/>"
+                    if price > 0:
+                        suburb_text += f"Median Price: ${price:,.0f} | "
+                    if yield_val > 0:
+                        suburb_text += f"Rental Yield: {yield_val:.1f}% | "
+                    if growth > 0:
+                        suburb_text += f"10yr Growth: {growth:.1f}%"
+
+                    # Add AI reasoning if available
+                    if 'AI_Reasons' in suburb and suburb['AI_Reasons']:
+                        reasons = suburb['AI_Reasons'].split('; ')
+                        suburb_text += f"<br/><i>Key Factors: {', '.join(reasons[:2])}</i>"
+
+                    story.append(Paragraph(suburb_text, styles['Normal']))
+                    story.append(Spacer(1, 8))
+            else:
+                story.append(Paragraph("No recommendations available in current analysis.", styles['Normal']))
+
+            story.append(PageBreak())
+
+            # Customer Profile Section
+            if customer_profile:
+                story.append(Paragraph("Investment Profile", heading_style))
+
+                # Personal details
+                personal = customer_profile.get('personal_details', {})
+                if personal:
+                    story.append(Paragraph("<b>Investor Profile:</b>", styles['Normal']))
+                    if personal.get('age'):
+                        story.append(Paragraph(f"Age: {personal['age']}", styles['Normal']))
+                    if personal.get('location'):
+                        story.append(Paragraph(f"Location: {personal['location']}", styles['Normal']))
+                    story.append(Spacer(1, 12))
+
+                # Financial details
+                financial = customer_profile.get('financial_details', {})
+                if financial:
+                    story.append(Paragraph("<b>Financial Capacity:</b>", styles['Normal']))
+                    if financial.get('annual_income'):
+                        story.append(Paragraph(f"Annual Income: {financial['annual_income']}", styles['Normal']))
+                    if financial.get('investment_budget'):
+                        story.append(Paragraph(f"Investment Budget: {financial['investment_budget']}", styles['Normal']))
+                    if financial.get('available_equity'):
+                        story.append(Paragraph(f"Available Equity: {financial['available_equity']}", styles['Normal']))
+                    story.append(Spacer(1, 12))
+
+                # Investment goals
+                goals = customer_profile.get('investment_goals', {})
+                if goals:
+                    story.append(Paragraph("<b>Investment Objectives:</b>", styles['Normal']))
+                    if goals.get('primary_purpose'):
+                        story.append(Paragraph(f"Primary Purpose: {goals['primary_purpose']}", styles['Normal']))
+                    if goals.get('investment_timeline'):
+                        story.append(Paragraph(f"Investment Timeline: {goals['investment_timeline']}", styles['Normal']))
+                    if goals.get('risk_tolerance'):
+                        story.append(Paragraph(f"Risk Tolerance: {goals['risk_tolerance']}", styles['Normal']))
+                    story.append(Spacer(1, 12))
+
+                story.append(PageBreak())
+
+            # Detailed Recommendations
+            if primary_recs is not None and not primary_recs.empty:
+                story.append(Paragraph("Detailed Property Recommendations", heading_style))
+
+                for idx, (_, suburb) in enumerate(primary_recs.head(10).iterrows(), 1):
+                    suburb_name = suburb.get('Suburb Name', suburb.get('Suburb', f'Suburb {idx}'))
+                    state = suburb.get('State', '')
+
+                    story.append(Paragraph(f"<b>{idx}. {suburb_name}, {state}</b>", styles['Heading3']))
+
+                    # Create table data for metrics
+                    table_data = []
+
+                    if 'Median Price' in suburb and suburb['Median Price'] > 0:
+                        table_data.append(['Median Price', f"${suburb['Median Price']:,.0f}"])
+                    if 'Rental Yield on Houses' in suburb and suburb['Rental Yield on Houses'] > 0:
+                        table_data.append(['Rental Yield', f"{suburb['Rental Yield on Houses']:.1f}%"])
+                    if '10 yr Avg. Annual Growth' in suburb and suburb['10 yr Avg. Annual Growth'] != 0:
+                        table_data.append(['10-Year Growth', f"{suburb['10 yr Avg. Annual Growth']:.1f}%"])
+                    if 'Distance (km) to CBD' in suburb and suburb['Distance (km) to CBD'] > 0:
+                        table_data.append(['Distance to CBD', f"{suburb['Distance (km) to CBD']:.0f} km"])
+
+                    if table_data:
+                        table = Table(table_data, colWidths=[2*inch, 2*inch])
+                        table.setStyle(TableStyle([
+                            ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#f3f4f6')),
+                            ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+                            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+                            ('FONTSIZE', (0, 0), (-1, -1), 10),
+                            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+                            ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#e5e7eb'))
+                        ]))
+                        story.append(table)
+                        story.append(Spacer(1, 12))
+
+                    # AI Score and reasoning
+                    if 'AI_Score' in suburb and suburb['AI_Score'] > 0:
+                        story.append(Paragraph(f"<b>AI Investment Score:</b> {suburb['AI_Score']:.0f}/100", styles['Normal']))
+                        if 'AI_Reasons' in suburb and suburb['AI_Reasons']:
+                            story.append(Paragraph("<b>AI Analysis:</b>", styles['Normal']))
+                            reasons = suburb['AI_Reasons'].split('; ')
+                            for reason in reasons:
+                                story.append(Paragraph(f"• {reason}", styles['Normal']))
+                        story.append(Spacer(1, 12))
+
+                    # Investment potential
+                    if 'Investment_Potential' in suburb:
+                        potential_colors = {
+                            'high': colors.green,
+                            'medium': colors.orange,
+                            'low': colors.red
+                        }
+                        potential = suburb['Investment_Potential'].lower()
+                        color = potential_colors.get(potential, colors.black)
+                        story.append(Paragraph(f"<b>Investment Potential:</b> <font color='{color.hexval()}'>{suburb['Investment_Potential'].title()}</font>", styles['Normal']))
+
+                    story.append(Spacer(1, 20))
+
+                    if idx < len(primary_recs.head(10)):
+                        story.append(Paragraph("<hr/>", styles['Normal']))
+                        story.append(Spacer(1, 12))
+
+            # Disclaimer
+            story.append(PageBreak())
+            story.append(Paragraph("Important Disclaimer", heading_style))
+            disclaimer_text = """
+            This report is generated for informational purposes only and should not be considered as financial advice.
+            Property investment involves risks, and past performance is not indicative of future results.
+            We recommend consulting with qualified financial advisors and conducting thorough due diligence
+            before making any investment decisions. Market conditions can change rapidly, and property values may fluctuate.
+
+            This analysis is based on available market data and AI-powered insights, but should be supplemented
+            with professional property inspections, legal advice, and current market assessments.
+            """
+            story.append(Paragraph(disclaimer_text, styles['Normal']))
+
+            # Build PDF
+            doc.build(story)
+
+            # Get PDF data
+            pdf_data = buffer.getvalue()
+            buffer.close()
+
+            # Provide download button
+            st.download_button(
+                label="📄 Download PDF Report",
+                data=pdf_data,
+                file_name=f"property_investment_report_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
+                mime="application/pdf",
+                key="pdf_download"
+            )
+
+            st.success("✅ PDF report generated successfully!")
+            st.info("📊 Your comprehensive property investment report is ready for download.")
+
+    except Exception as e:
+        st.error(f"❌ Error generating PDF report: {str(e)}")
+        st.error("Please ensure all required data is available and try again.")
 
 def export_to_excel():
     """Export data to Excel format"""
@@ -764,28 +1033,162 @@ def export_to_excel():
         st.error(f"Error generating Excel report: {str(e)}")
 
 def save_report_data():
-    """Save report data to session state"""
-    report_data = {
-        'customer_profile': st.session_state.get('customer_profile'),
-        'suburb_data': st.session_state.get('suburb_data').to_dict() if st.session_state.get('suburb_data') is not None else None,
-        'recommendations': st.session_state.get('recommendations'),
-        'generated_date': datetime.now().isoformat(),
-        'report_version': '1.0'
-    }
+    """Save comprehensive report data with multiple formats"""
+    try:
+        with st.spinner("💾 Preparing report data..."):
+            # Gather all available data
+            customer_profile = st.session_state.get('customer_profile', {})
+            suburb_data = st.session_state.get('suburb_data')
+            recommendations = st.session_state.get('recommendations', {})
+            agent_notes = st.session_state.get('agent_notes', {})
+            detailed_agent_notes = st.session_state.get('detailed_agent_notes', {})
 
-    st.session_state.final_report = report_data
+            # Create comprehensive report data structure
+            report_data = {
+                'metadata': {
+                    'generated_date': datetime.now().isoformat(),
+                    'report_version': '2.0',
+                    'application': 'Property Investment Analysis Platform',
+                    'recommendation_engine': recommendations.get('recommendation_engine', 'unknown')
+                },
+                'customer_profile': customer_profile,
+                'recommendations': recommendations,
+                'agent_review': {
+                    'quick_notes': agent_notes,
+                    'detailed_notes': detailed_agent_notes,
+                    'review_complete': len(agent_notes) > 0 or len(detailed_agent_notes) > 0
+                },
+                'session_summary': {
+                    'profile_generated': st.session_state.get('profile_generated', False),
+                    'data_uploaded': st.session_state.get('data_uploaded', False),
+                    'analysis_complete': st.session_state.get('analysis_complete', False),
+                    'workflow_step': st.session_state.get('workflow_step', 1)
+                }
+            }
 
-    # Also offer JSON download
-    json_data = json.dumps(report_data, indent=2, default=str)
+            # Handle suburb data serialization
+            if suburb_data is not None and not suburb_data.empty:
+                # Convert DataFrame to dict for JSON serialization
+                report_data['market_data'] = {
+                    'suburb_count': len(suburb_data),
+                    'columns': suburb_data.columns.tolist(),
+                    'sample_data': suburb_data.head(10).to_dict('records'),  # Include sample for reference
+                    'data_summary': {
+                        'median_price_range': {
+                            'min': float(suburb_data['Median Price'].min()) if 'Median Price' in suburb_data.columns else None,
+                            'max': float(suburb_data['Median Price'].max()) if 'Median Price' in suburb_data.columns else None,
+                            'mean': float(suburb_data['Median Price'].mean()) if 'Median Price' in suburb_data.columns else None
+                        } if 'Median Price' in suburb_data.columns else {},
+                        'yield_range': {
+                            'min': float(suburb_data['Rental Yield on Houses'].min()) if 'Rental Yield on Houses' in suburb_data.columns else None,
+                            'max': float(suburb_data['Rental Yield on Houses'].max()) if 'Rental Yield on Houses' in suburb_data.columns else None,
+                            'mean': float(suburb_data['Rental Yield on Houses'].mean()) if 'Rental Yield on Houses' in suburb_data.columns else None
+                        } if 'Rental Yield on Houses' in suburb_data.columns else {}
+                    }
+                }
 
-    st.download_button(
-        label="💾 Download Report Data (JSON)",
-        data=json_data,
-        file_name=f"property_report_data_{datetime.now().strftime('%Y%m%d')}.json",
-        mime="application/json"
-    )
+            # Store in session state
+            st.session_state.final_report = report_data
 
-    st.success("✅ Report data saved successfully!")
+            # Auto-backup session data
+            backup_session_data()
+
+            # Provide multiple download options
+            col1, col2, col3 = st.columns(3)
+
+            with col1:
+                # JSON download (detailed)
+                json_data = json.dumps(report_data, indent=2, default=str)
+                st.download_button(
+                    label="📄 Download Complete Report (JSON)",
+                    data=json_data,
+                    file_name=f"property_analysis_complete_{datetime.now().strftime('%Y%m%d_%H%M')}.json",
+                    mime="application/json",
+                    help="Complete analysis data including all session information"
+                )
+
+            with col2:
+                # CSV download (recommendations only)
+                primary_recs = recommendations.get('primary_recommendations')
+                if primary_recs is not None and not primary_recs.empty:
+                    csv_data = primary_recs.to_csv(index=False)
+                    st.download_button(
+                        label="📊 Download Recommendations (CSV)",
+                        data=csv_data,
+                        file_name=f"property_recommendations_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
+                        mime="text/csv",
+                        help="Recommended suburbs data in spreadsheet format"
+                    )
+                else:
+                    st.info("No recommendations available for CSV export")
+
+            with col3:
+                # Summary JSON (lightweight)
+                summary_data = {
+                    'generated_date': datetime.now().isoformat(),
+                    'customer_summary': {
+                        'budget': customer_profile.get('financial_details', {}).get('investment_budget', 'N/A'),
+                        'purpose': customer_profile.get('investment_goals', {}).get('primary_purpose', 'N/A'),
+                        'timeline': customer_profile.get('investment_goals', {}).get('investment_timeline', 'N/A')
+                    },
+                    'top_recommendations': []
+                }
+
+                # Add top 5 recommendations summary
+                primary_recs = recommendations.get('primary_recommendations')
+                if primary_recs is not None and not primary_recs.empty:
+                    for idx, (_, suburb) in enumerate(primary_recs.head(5).iterrows(), 1):
+                        suburb_summary = {
+                            'rank': idx,
+                            'suburb': suburb.get('Suburb Name', suburb.get('Suburb', f'Suburb {idx}')),
+                            'state': suburb.get('State', ''),
+                            'median_price': suburb.get('Median Price', 0),
+                            'rental_yield': suburb.get('Rental Yield on Houses', 0),
+                            'growth_10yr': suburb.get('10 yr Avg. Annual Growth', 0)
+                        }
+                        if 'AI_Score' in suburb:
+                            suburb_summary['ai_score'] = suburb['AI_Score']
+                        if 'AI_Reasons' in suburb:
+                            suburb_summary['key_factors'] = suburb['AI_Reasons'].split('; ')[:3]
+
+                        summary_data['top_recommendations'].append(suburb_summary)
+
+                summary_json = json.dumps(summary_data, indent=2, default=str)
+                st.download_button(
+                    label="📋 Download Summary (JSON)",
+                    data=summary_json,
+                    file_name=f"property_summary_{datetime.now().strftime('%Y%m%d_%H%M')}.json",
+                    mime="application/json",
+                    help="Lightweight summary of key findings"
+                )
+
+            st.success("✅ Report data saved successfully!")
+            st.info("💡 **Multiple formats available:** Complete analysis (JSON), Recommendations (CSV), and Summary (JSON)")
+
+            # Show data summary
+            with st.expander("📊 Report Data Summary"):
+                col1, col2 = st.columns(2)
+
+                with col1:
+                    st.metric("Recommendations Generated", len(primary_recs) if primary_recs is not None else 0)
+                    st.metric("Agent Notes", len(agent_notes))
+
+                with col2:
+                    st.metric("Market Data Points", len(suburb_data) if suburb_data is not None else 0)
+                    st.metric("Workflow Completion", f"{st.session_state.get('workflow_step', 1)}/5")
+
+                # Engine used
+                engine_used = recommendations.get('recommendation_engine', 'unknown')
+                engine_display = {
+                    'ai_genai': '🤖 AI/GenAI Engine (OpenAI GPT-4)',
+                    'rule_based': '📊 Rule-Based Analysis',
+                    'ml': '🧠 Machine Learning Engine'
+                }
+                st.info(f"**Analysis Engine:** {engine_display.get(engine_used, engine_used)}")
+
+    except Exception as e:
+        st.error(f"❌ Error saving report data: {str(e)}")
+        st.error("Please ensure analysis is complete and try again.")
 
 def generate_suburb_one_pagers_preview(max_suburbs, one_pager_style, company_name, include_charts, include_disclaimer):
     """Generate preview of suburb one-pagers"""

@@ -21,6 +21,9 @@ def render_user_guide_page():
     - Generate professional client reports automatically
     - Access comprehensive market insights including HtAG data
     - Leverage AI to identify optimal investment opportunities
+    - **Automatic session persistence** - Never lose your progress when switching tabs
+    - **Professional PDF reports** - Export presentation-ready documents
+    - **Configurable recommendations** - Adjust number of suburbs (5-20) to match client needs
     """)
 
     st.markdown("---")
@@ -216,6 +219,13 @@ def render_user_guide_page():
         - `ai_genai_recommendations.csv` (when AI used)
         - `rule_based_recommendations.csv` (when fallback used)
         - `ai_analysis.json` (detailed AI insights)
+        - **Dynamic filename generation** based on actual engine used
+        - **Professional PDF reports** with comprehensive analysis and charts
+
+        **Suburb Count Configuration:**
+        - Prominently displayed slider to select 5-20 suburbs
+        - Real-time adjustment of recommendation scope
+        - Helps tailor analysis to client's decision-making capacity
 
         **What You'll Review:**
         - Engine type used for recommendations
@@ -306,6 +316,60 @@ def render_user_guide_page():
 
     st.markdown("---")
 
+    # Step 5.5
+    st.markdown("### Step 5.5: Detailed Investment Insights")
+
+    col1, col2 = st.columns([2, 1])
+
+    with col1:
+        st.markdown("""
+        **Purpose**: Access comprehensive analytics and detailed insights for your recommended suburbs.
+
+        **Enhanced Analytics Dashboard:**
+        - **Market Overview**: AI-generated insights about market conditions and trends
+        - **Performance Metrics**: Growth rates, rental yields, and risk assessments
+        - **Comparative Analysis**: Side-by-side suburb comparisons with detailed charts
+        - **Investment Projections**: Expected returns and cash flow analysis
+        - **Risk Assessment**: Detailed risk factors and mitigation strategies
+
+        **Interactive Features:**
+        - **Suburb Count Configuration**: Adjust recommendations from 5-20 suburbs
+        - **Dynamic Charts**: Interactive visualizations with Plotly
+        - **AI Reasoning**: Detailed explanations for each recommendation
+        - **Market Indicators**: Real-time market health assessments
+
+        **Professional Analytics:**
+        - Growth potential vs rental yield scatter plots
+        - Market performance trending analysis
+        - Risk-return optimization charts
+        - Suburb ranking visualizations with scores
+
+        **What You'll See:**
+        - Engine type used (AI/GenAI, Rule-Based, or ML)
+        - Comprehensive suburb analytics and reasoning
+        - Professional charts and visualizations
+        - Exportable data for client presentations
+        """)
+
+    with col2:
+        st.success("""
+        **Key Features:**
+        - AI-powered market insights
+        - Interactive suburb configuration
+        - Professional visualizations
+        - Comprehensive analytics
+        - Export-ready charts
+
+        **Analytics Include:**
+        - Market overview
+        - Performance metrics
+        - Risk assessments
+        - Investment projections
+        - Comparative analysis
+        """)
+
+    st.markdown("---")
+
     # Step 6
     st.markdown("### Step 6: Professional Report Generation")
 
@@ -351,26 +415,45 @@ def render_user_guide_page():
         - Local market knowledge and tips
         - Strategic advice and next steps
 
-        **Report Formats:**
-        - PDF presentation for client meetings
-        - Excel spreadsheet with detailed data
-        - Interactive dashboard for ongoing monitoring
+        **Enhanced Report Generation:**
+
+        **Professional PDF Reports (Implemented)**
+        - **Executive Summary** with key findings and recommendations
+        - **Client Profile** section with investment criteria
+        - **Market Analysis** with suburb rankings and detailed insights
+        - **Investment Recommendations** with AI-generated rationale
+        - **Supporting Charts** including growth potential vs rental yield plots
+        - **Risk Assessment** with detailed factor analysis
+        - **Professional Formatting** with consistent styling and branding
+
+        **Multiple Export Formats:**
+        - **PDF Reports**: Presentation-ready documents for client meetings
+        - **CSV Data**: Detailed suburb data and recommendations
+        - **JSON Insights**: AI analysis and reasoning data
+        - **Excel Integration**: Compatible with further analysis tools
+
+        **Save Report Functionality:**
+        - **Dynamic Filenames**: Automatically named based on engine used
+        - **Timestamp Integration**: Reports include generation date/time
+        - **Session Recovery**: Reports persist across browser sessions
+        - **Multiple Download Options**: Choose format based on use case
         """)
 
     with col2:
         st.success("""
-        **Report Features:**
-        - Professional branding
-        - Executive summary
-        - Detailed analysis
-        - Supporting charts/graphs
-        - Action recommendations
-        - Contact information
+        **Enhanced Features:**
+        - **Professional PDF Generation**: Full reportlab implementation
+        - **Dynamic Content**: AI-generated insights and recommendations
+        - **Interactive Charts**: Plotly visualizations included
+        - **Comprehensive Analysis**: Market trends and suburb comparisons
+        - **Professional Branding**: Consistent styling and formatting
+        - **Action Recommendations**: Clear next steps for clients
 
         **Export Options:**
-        - PDF for presentations
-        - Excel for analysis
-        - Interactive dashboard
+        - **PDF Reports**: Client-ready presentations
+        - **CSV Data**: Detailed analysis spreadsheets
+        - **JSON Insights**: AI reasoning and analysis
+        - **Session Backup**: Automatic data persistence
         """)
 
     st.markdown("---")
@@ -420,6 +503,59 @@ def render_user_guide_page():
         - Alternative scenarios
         - Market insights
         - Strategy advice
+        """)
+
+    st.markdown("---")
+
+    # Session Management section
+    st.markdown("## Session Management & Data Persistence")
+
+    col1, col2 = st.columns([2, 1])
+
+    with col1:
+        st.markdown("""
+        **Automatic Session Persistence**: The platform now automatically saves your progress as you work.
+
+        **How It Works:**
+        - **Automatic Backup**: Session data is backed up after each major step
+        - **Cross-Tab Persistence**: Switch between tabs without losing progress
+        - **Recovery System**: Automatic recovery if browser is refreshed
+        - **Data Integrity**: Customer profiles, uploaded data, and recommendations are preserved
+
+        **What Gets Saved:**
+        - Customer profile information and investment criteria
+        - Uploaded suburb data and market analysis
+        - Generated recommendations and AI insights
+        - Agent review comments and modifications
+        - Report generation settings and preferences
+
+        **Session Recovery:**
+        - Automatic detection of previous session data
+        - Seamless restoration of workflow progress
+        - Preservation of analysis results across browser sessions
+        - Recovery of AI-generated insights and recommendations
+
+        **Manual Session Management:**
+        - **Reset Session**: Clear all data to start fresh analysis
+        - **Session Status**: View current session information and backup status
+        - **Export Session**: Download complete session data for records
+        """)
+
+    with col2:
+        st.info("""
+        **Session Features:**
+        - Automatic backup system
+        - Cross-tab data persistence
+        - Browser refresh recovery
+        - Progress tracking
+        - Data integrity protection
+
+        **Persistence Includes:**
+        - Customer profiles
+        - Market data uploads
+        - AI recommendations
+        - Agent modifications
+        - Report settings
         """)
 
     st.markdown("---")
@@ -488,6 +624,21 @@ def render_user_guide_page():
         **Solution**: Verify you have the correct HtAG file format. Contact support if you need help with specific data source integration.
         """)
 
+    with st.expander("Session & Navigation Issues"):
+        st.markdown("""
+        **Problem**: "I lost my progress when switching tabs"
+        **Solution**: The platform now automatically saves progress. If you experience issues, check the session status in the workflow progress bar.
+
+        **Problem**: "My recommendations disappeared"
+        **Solution**: Use the session recovery system - the platform automatically backs up your data. Check the 'Detailed Investment Insights' tab to verify recommendations are available.
+
+        **Problem**: "Agent Review shows 'No recommendations available'"
+        **Solution**: Ensure you've completed the AI recommendation step first. The system now includes session recovery to restore missing data.
+
+        **Problem**: "PDF generation is not working"
+        **Solution**: The PDF generation system has been fully implemented. Ensure your analysis is complete and try the 'Generate PDF Report' button in the Reports tab.
+        """)
+
     with st.expander("Analysis & Scoring Questions"):
         st.markdown("""
         **Question**: "Why are the suburb scores different from my expectations?"
@@ -498,6 +649,12 @@ def render_user_guide_page():
 
         **Question**: "How current is the market data used in analysis?"
         **Answer**: Data currency depends on your source. HtAG data is typically updated quarterly, while other sources may vary. Always check data dates before presenting to clients.
+
+        **Question**: "How do I change the number of recommended suburbs?"
+        **Answer**: Use the prominent slider in the 'AI Recommendations' and 'Detailed Investment Insights' tabs to select between 5-20 suburbs. This helps tailor the analysis to your client's decision-making capacity.
+
+        **Question**: "Which recommendation engine was used for my analysis?"
+        **Answer**: Check the engine type displayed in the recommendations. AI/GenAI is primary, with Rule-Based as fallback. Export filenames also indicate the engine used (e.g., 'ai_genai_recommendations.csv').
         """)
 
     with st.expander("Client Presentation Tips"):
