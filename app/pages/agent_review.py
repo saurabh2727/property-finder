@@ -1,0 +1,482 @@
+import streamlit as st
+import pandas as pd
+import numpy as np
+import plotly.express as px
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+import json
+from datetime import datetime
+
+def render_agent_review_page():
+    """
+    Step 9: Agent Review & Notes
+    Interface for agents to review recommendations, adjust weights, and add insights
+    """
+
+    st.title("👨‍💼 Agent Review & Notes")
+    st.subheader("Review Recommendations & Add Professional Insights")
+
+    # Check prerequisites
+    if not st.session_state.get('recommendations'):
+        st.warning("⚠️ No recommendations available. Please complete the analysis workflow first.")
+        if st.button("← Go to Recommendations"):
+            st.session_state.current_page = 'recommendations'
+            st.rerun()
+        return
+
+    # Initialize agent notes in session state
+    if 'agent_notes' not in st.session_state:
+        st.session_state.agent_notes = {}
+
+    if 'custom_weights' not in st.session_state:
+        st.session_state.custom_weights = {
+            'growth_weight': 0.4,
+            'yield_weight': 0.4,
+            'risk_weight': 0.2
+        }
+
+    # Main interface
+    tab1, tab2, tab3, tab4 = st.tabs([
+        "🎯 Review Recommendations",
+        "⚖️ Adjust Scoring Weights",
+        "📝 Add Agent Notes",
+        "🔍 Market Intelligence"
+    ])
+
+    with tab1:
+        render_recommendation_review()
+
+    with tab2:
+        render_weight_adjustment()
+
+    with tab3:
+        render_agent_notes_interface()
+
+    with tab4:
+        render_market_intelligence()
+
+def render_recommendation_review():
+    """Review and approve/modify recommendations"""
+
+    st.subheader("🎯 Recommendation Review")
+
+    recommendations = st.session_state.recommendations
+
+    # Get the best recommendations data
+    ml_recs = recommendations.get('ml_recommendations')
+    rule_recs = recommendations.get('rule_based')
+    top_suburbs = ml_recs if ml_recs is not None and not ml_recs.empty else rule_recs
+
+    if top_suburbs is None or top_suburbs.empty:
+        st.warning("No recommendations available to review")
+        return
+
+    # Display current recommendations with approval status
+    st.markdown("### Current Recommendations")
+
+    # Initialize approval status
+    if 'suburb_approvals' not in st.session_state:
+        st.session_state.suburb_approvals = {}
+
+    approved_count = 0
+    rejected_count = 0
+
+    for idx, (_, suburb) in enumerate(top_suburbs.head(10).iterrows(), 1):
+        suburb_name = suburb.get('Suburb', f'Suburb {idx}')
+        suburb_key = f"{suburb_name}_{idx}"
+
+        with st.expander(f"#{idx} {suburb_name}, {suburb.get('State', '')}", expanded=idx <= 3):
+
+            col1, col2, col3 = st.columns([2, 1, 1])
+
+            with col1:
+                # Key metrics
+                st.markdown("#### 📊 Key Metrics")
+
+                metric_col1, metric_col2 = st.columns(2)
+
+                with metric_col1:
+                    if 'Median Price' in suburb:
+                        st.metric("Median Price", f"${suburb['Median Price']:,.0f}")
+                    if 'Rental Yield on Houses' in suburb:
+                        st.metric("Rental Yield", f"{suburb['Rental Yield on Houses']:.1f}%")
+
+                with metric_col2:
+                    if '10 yr Avg. Annual Growth' in suburb:
+                        st.metric("10yr Growth", f"{suburb['10 yr Avg. Annual Growth']:.1f}%")
+                    if 'Distance (km) to CBD' in suburb:
+                        st.metric("Distance to CBD", f"{suburb['Distance (km) to CBD']:.0f} km")
+
+                # Scores (if available from enhanced scoring)
+                if 'Growth_Score' in suburb:
+                    st.markdown("#### 🎯 AI Scores")
+                    score_col1, score_col2, score_col3 = st.columns(3)
+
+                    with score_col1:
+                        st.metric("Growth Score", f"{suburb['Growth_Score']:.2f}")
+                    with score_col2:
+                        st.metric("Yield Score", f"{suburb['Yield_Score']:.2f}")
+                    with score_col3:
+                        st.metric("Risk Score", f"{suburb['Risk_Score']:.2f}")
+
+            with col2:
+                # Agent approval
+                st.markdown("#### 👨‍💼 Agent Decision")
+
+                current_status = st.session_state.suburb_approvals.get(suburb_key, 'pending')
+
+                approval_status = st.selectbox(
+                    "Status",
+                    options=['pending', 'approved', 'rejected', 'flagged'],
+                    index=['pending', 'approved', 'rejected', 'flagged'].index(current_status),
+                    key=f"approval_{suburb_key}"
+                )
+
+                st.session_state.suburb_approvals[suburb_key] = approval_status
+
+                # Count for summary
+                if approval_status == 'approved':
+                    approved_count += 1
+                elif approval_status == 'rejected':
+                    rejected_count += 1
+
+                # Priority ranking
+                priority = st.selectbox(
+                    "Priority",
+                    options=['Low', 'Medium', 'High', 'Top'],
+                    index=0,
+                    key=f"priority_{suburb_key}"
+                )
+
+            with col3:
+                # Quick notes
+                st.markdown("#### 📝 Quick Notes")
+
+                quick_note = st.text_area(
+                    "Agent Note",
+                    placeholder="On-ground insights, local knowledge...",
+                    height=100,
+                    key=f"quick_note_{suburb_key}"
+                )
+
+                if quick_note:
+                    st.session_state.agent_notes[suburb_key] = {
+                        'quick_note': quick_note,
+                        'timestamp': datetime.now().isoformat(),
+                        'priority': priority,
+                        'status': approval_status
+                    }
+
+                # Action buttons
+                if st.button(f"📍 View on Map", key=f"map_{suburb_key}"):
+                    st.info(f"Map view for {suburb_name} would open here")
+
+    # Summary
+    st.markdown("---")
+    st.markdown("### 📊 Review Summary")
+
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+        st.metric("Approved", approved_count)
+    with col2:
+        st.metric("Rejected", rejected_count)
+    with col3:
+        pending_count = len(top_suburbs) - approved_count - rejected_count
+        st.metric("Pending Review", pending_count)
+    with col4:
+        completion_rate = ((approved_count + rejected_count) / len(top_suburbs)) * 100
+        st.metric("Completion", f"{completion_rate:.0f}%")
+
+def render_weight_adjustment():
+    """Interface for adjusting scoring weights"""
+
+    st.subheader("⚖️ Adjust Scoring Weights")
+    st.info("Adjust the importance weights based on client priorities and market insights")
+
+    # Current weights
+    current_weights = st.session_state.custom_weights
+
+    col1, col2 = st.columns([1, 1])
+
+    with col1:
+        st.markdown("#### 🎛️ Weight Configuration")
+
+        # Weight sliders
+        growth_weight = st.slider(
+            "Growth Weight",
+            min_value=0.0,
+            max_value=1.0,
+            value=current_weights['growth_weight'],
+            step=0.1,
+            help="Importance of capital growth potential"
+        )
+
+        yield_weight = st.slider(
+            "Yield Weight",
+            min_value=0.0,
+            max_value=1.0,
+            value=current_weights['yield_weight'],
+            step=0.1,
+            help="Importance of rental yield performance"
+        )
+
+        risk_weight = st.slider(
+            "Risk Weight",
+            min_value=0.0,
+            max_value=1.0,
+            value=current_weights['risk_weight'],
+            step=0.1,
+            help="Importance of risk considerations (inverse)"
+        )
+
+        # Normalize weights to sum to 1
+        total_weight = growth_weight + yield_weight + risk_weight
+        if total_weight > 0:
+            growth_weight /= total_weight
+            yield_weight /= total_weight
+            risk_weight /= total_weight
+
+        # Update session state
+        st.session_state.custom_weights = {
+            'growth_weight': growth_weight,
+            'yield_weight': yield_weight,
+            'risk_weight': risk_weight
+        }
+
+    with col2:
+        st.markdown("#### 📊 Weight Visualization")
+
+        # Weight distribution pie chart
+        fig = go.Figure(data=[go.Pie(
+            labels=['Growth', 'Yield', 'Risk'],
+            values=[growth_weight, yield_weight, risk_weight],
+            hole=.3
+        )])
+
+        fig.update_layout(
+            title="Scoring Weight Distribution",
+            annotations=[dict(text='Weights', x=0.5, y=0.5, font_size=16, showarrow=False)]
+        )
+
+        st.plotly_chart(fig, use_container_width=True)
+
+    # Preset configurations
+    st.markdown("#### 🎯 Preset Configurations")
+
+    preset_col1, preset_col2, preset_col3 = st.columns(3)
+
+    with preset_col1:
+        if st.button("📈 Growth Focused", use_container_width=True):
+            st.session_state.custom_weights = {
+                'growth_weight': 0.6,
+                'yield_weight': 0.25,
+                'risk_weight': 0.15
+            }
+            st.rerun()
+
+    with preset_col2:
+        if st.button("💰 Income Focused", use_container_width=True):
+            st.session_state.custom_weights = {
+                'growth_weight': 0.25,
+                'yield_weight': 0.6,
+                'risk_weight': 0.15
+            }
+            st.rerun()
+
+    with preset_col3:
+        if st.button("🛡️ Conservative", use_container_width=True):
+            st.session_state.custom_weights = {
+                'growth_weight': 0.3,
+                'yield_weight': 0.3,
+                'risk_weight': 0.4
+            }
+            st.rerun()
+
+    # Apply new weights
+    st.markdown("---")
+    if st.button("🔄 Recalculate with New Weights", type="primary"):
+        st.info("Recalculation with custom weights would be applied here")
+        st.balloons()
+
+def render_agent_notes_interface():
+    """Comprehensive notes interface for agents"""
+
+    st.subheader("📝 Agent Notes & Insights")
+
+    # Notes categories
+    note_type = st.selectbox(
+        "Note Category",
+        ["General Insights", "Market Conditions", "Client Specific", "Risk Factors", "Opportunities"]
+    )
+
+    # Rich text area for detailed notes
+    detailed_notes = st.text_area(
+        f"{note_type} Notes",
+        placeholder=f"Add your professional insights about {note_type.lower()}...",
+        height=200
+    )
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        # Confidence rating
+        confidence_level = st.select_slider(
+            "Confidence Level",
+            options=["Very Low", "Low", "Medium", "High", "Very High"],
+            value="Medium"
+        )
+
+    with col2:
+        # Follow-up required
+        follow_up = st.checkbox("Requires Follow-up")
+        if follow_up:
+            follow_up_date = st.date_input("Follow-up Date")
+
+    # Save notes
+    if st.button("💾 Save Notes"):
+        if detailed_notes:
+            note_key = f"{note_type}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+
+            if 'detailed_agent_notes' not in st.session_state:
+                st.session_state.detailed_agent_notes = {}
+
+            st.session_state.detailed_agent_notes[note_key] = {
+                'category': note_type,
+                'content': detailed_notes,
+                'confidence': confidence_level,
+                'follow_up_required': follow_up,
+                'follow_up_date': follow_up_date.isoformat() if follow_up else None,
+                'timestamp': datetime.now().isoformat(),
+                'agent': "Current Agent"  # Would be actual agent name in production
+            }
+
+            st.success("Notes saved successfully!")
+        else:
+            st.warning("Please enter some notes before saving")
+
+    # Display existing notes
+    st.markdown("### 📋 Existing Notes")
+
+    if 'detailed_agent_notes' in st.session_state and st.session_state.detailed_agent_notes:
+        for note_key, note in st.session_state.detailed_agent_notes.items():
+            with st.expander(f"{note['category']} - {note['timestamp'][:10]}"):
+                st.write(f"**Content:** {note['content']}")
+                st.write(f"**Confidence:** {note['confidence']}")
+                st.write(f"**Date:** {note['timestamp'][:19]}")
+
+                if note.get('follow_up_required'):
+                    st.warning(f"⏰ Follow-up required by: {note.get('follow_up_date', 'Not specified')}")
+    else:
+        st.info("No detailed notes available yet.")
+
+def render_market_intelligence():
+    """Market intelligence and research tools"""
+
+    st.subheader("🔍 Market Intelligence")
+
+    # Quick research tools
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("#### 🔍 Quick Research")
+
+        research_suburb = st.selectbox(
+            "Select Suburb for Research",
+            options=get_suburb_options()
+        )
+
+        research_type = st.selectbox(
+            "Research Type",
+            ["Recent Sales", "Rental Market", "Development Plans", "Demographics", "School Zones"]
+        )
+
+        if st.button("🔍 Research", use_container_width=True):
+            display_research_results(research_suburb, research_type)
+
+    with col2:
+        st.markdown("#### 📊 Quick Analysis")
+
+        # Comparison tool
+        st.write("**Compare Suburbs:**")
+        suburb1 = st.selectbox("Suburb 1", options=get_suburb_options(), key="compare1")
+        suburb2 = st.selectbox("Suburb 2", options=get_suburb_options(), key="compare2")
+
+        if st.button("📊 Compare", use_container_width=True):
+            display_suburb_comparison(suburb1, suburb2)
+
+    # Market alerts and notifications
+    st.markdown("---")
+    st.markdown("#### 🚨 Market Alerts")
+
+    alert_col1, alert_col2 = st.columns(2)
+
+    with alert_col1:
+        st.info("💡 **Market Insight:** Interest rates expected to stabilize - good timing for investors")
+        st.warning("⚠️ **Price Alert:** Median prices in Eastern suburbs up 8% this quarter")
+
+    with alert_col2:
+        st.success("✅ **Opportunity:** New infrastructure projects announced in Western corridor")
+        st.error("🔴 **Risk Alert:** Oversupply concerns in some inner-city unit markets")
+
+def get_suburb_options():
+    """Get available suburb options from current data"""
+
+    if st.session_state.get('suburb_data') is not None:
+        df = st.session_state.suburb_data
+        if 'Suburb' in df.columns:
+            return sorted(df['Suburb'].unique().tolist())
+
+    return ['Sample Suburb 1', 'Sample Suburb 2', 'Sample Suburb 3']
+
+def display_research_results(suburb, research_type):
+    """Display mock research results"""
+
+    st.markdown(f"### 🔍 {research_type} Research: {suburb}")
+
+    if research_type == "Recent Sales":
+        st.write(f"**Recent sales data for {suburb}:**")
+
+        # Mock sales data
+        sales_data = pd.DataFrame({
+            'Date': ['2024-09-01', '2024-08-15', '2024-07-20'],
+            'Address': ['123 Main St', '456 Oak Ave', '789 Pine Rd'],
+            'Price': [750000, 820000, 680000],
+            'Type': ['House', 'House', 'Unit'],
+            'Bedrooms': [3, 4, 2]
+        })
+
+        st.dataframe(sales_data, use_container_width=True)
+
+    elif research_type == "Development Plans":
+        st.write(f"**Upcoming developments in {suburb}:**")
+        st.write("• New shopping center planned for 2025")
+        st.write("• Light rail extension under consideration")
+        st.write("• Rezoning proposal for medium density housing")
+
+    else:
+        st.info(f"Research results for {research_type} in {suburb} would be displayed here")
+
+def display_suburb_comparison(suburb1, suburb2):
+    """Display suburb comparison"""
+
+    st.markdown(f"### 📊 Comparison: {suburb1} vs {suburb2}")
+
+    # Mock comparison data
+    comparison_data = {
+        'Metric': ['Median Price', 'Rental Yield', '10yr Growth', 'Distance to CBD'],
+        suburb1: ['$750,000', '4.2%', '6.5%', '15km'],
+        suburb2: ['$680,000', '4.8%', '5.2%', '22km']
+    }
+
+    comparison_df = pd.DataFrame(comparison_data)
+    st.dataframe(comparison_df, use_container_width=True)
+
+# Add to main app navigation
+def add_agent_review_to_sidebar():
+    """Add agent review page to sidebar navigation"""
+
+    # This would be added to the sidebar.py file
+    if st.button("👨‍💼 Agent Review", use_container_width=True):
+        st.session_state.current_page = 'agent_review'
+        st.rerun()

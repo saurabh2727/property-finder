@@ -1,0 +1,14 @@
+[global]
+developmentMode = false
+
+[server]
+port = 8501
+enableCORS = false
+enableXsrfProtection = false
+headless = true
+
+[browser]
+gatherUsageStats = false
+
+[client]
+showErrorDetails = false
