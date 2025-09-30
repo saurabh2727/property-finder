@@ -3,6 +3,7 @@ import pandas as pd
 from utils.document_processor import DocumentProcessor
 from utils.htag_processor import HtAGProcessor
 from utils.session_state import update_workflow_step, save_suburb_data, backup_session_data
+from components.sample_files import render_sample_files_section
 import plotly.express as px
 import plotly.graph_objects as go
 
@@ -45,6 +46,11 @@ def upload_new_data():
     """Handle new data upload"""
 
     st.markdown("### Upload Suburb Market Data")
+
+    # Sample files section
+    render_sample_files_section()
+
+    st.markdown("---")
 
     # Data source information
     with st.expander("📋 Supported Data Sources", expanded=True):

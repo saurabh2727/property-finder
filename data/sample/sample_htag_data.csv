@@ -1,0 +1,11 @@
+Suburb Name,State,Median House Price,Rental Yield Houses,Distance to CBD (km),Total Population,Vacancy Rate,Days on Market,10 Year Growth Rate
+Bondi,NSW,"$1,200,000",3.2%,8,"12,500",2.1,35,6.2%
+Parramatta,NSW,"$850,000",4.5%,25,"25,000",3.2,28,5.8%
+Richmond,VIC,"$750,000",4.8%,12,"18,000",2.8,42,7.1%
+Southbank,VIC,"$650,000",4.1%,2,"15,000",3.5,38,8.2%
+Fremantle,WA,"$580,000",5.2%,19,"28,000",2.0,25,4.9%
+Glenelg,SA,"$720,000",4.3%,11,"16,500",2.9,33,5.5%
+Newtown,NSW,"$950,000",3.8%,6,"22,000",2.4,31,6.8%
+Carlton,VIC,"$780,000",4.4%,3,"14,000",3.1,29,7.5%
+Manly,NSW,"$1,450,000",2.9%,17,"17,500",1.8,42,5.4%
+Fitzroy,VIC,"$820,000",4.2%,4,"21,000",2.7,33,7.3%

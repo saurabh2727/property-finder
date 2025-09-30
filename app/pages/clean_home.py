@@ -1,5 +1,6 @@
 import streamlit as st
 from utils.session_state import update_workflow_step
+from components.sample_files import render_sample_files_section
 
 def render_clean_home_page():
     """Render a modern, professional home page"""
@@ -64,6 +65,11 @@ def render_clean_home_page():
             </div>
         </div>
         """, unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # Sample files section
+    render_sample_files_section()
 
     st.markdown("---")
 

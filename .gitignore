@@ -49,7 +49,9 @@ ehthumbs.db
 Thumbs.db
 
 # Application specific
-data/
+data/*
+!data/sample/
+!data/sample/*
 logs/
 *.log
 *.db

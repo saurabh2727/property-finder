@@ -2,6 +2,7 @@ import streamlit as st
 from utils.document_processor import DocumentProcessor
 from services.openai_service import OpenAIService
 from utils.session_state import update_workflow_step, save_customer_profile, backup_session_data
+from components.sample_files import render_sample_files_section
 import json
 
 def render_clean_customer_profile_page():
@@ -52,6 +53,10 @@ def collect_customer_profile():
     Upload the completed customer discovery questionnaire. Supported formats: DOCX, PDF, TXT.
     The AI will analyze the document and extract key investment requirements and preferences.
     """)
+
+    # Sample files section
+    with st.expander("📥 Need a sample file?", expanded=False):
+        render_sample_files_section()
 
     # File upload section
     uploaded_file = st.file_uploader(
