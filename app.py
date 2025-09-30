@@ -115,9 +115,9 @@ def disable_sidebar_collapse():
     section[data-testid="stSidebar"] {
         display: block !important;
         visibility: visible !important;
-        width: 244px !important;
-        min-width: 244px !important;
-        max-width: 244px !important;
+        width: 350px !important;
+        min-width: 350px !important;
+        max-width: 350px !important;
         position: relative !important;
     }
     /* Prevent any collapse animations */

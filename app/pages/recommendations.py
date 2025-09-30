@@ -142,6 +142,11 @@ def generate_recommendations(df, customer_profile, num_recommendations, approach
             progress_bar.progress(50)
 
             try:
+                # Check API key before proceeding
+                if not st.session_state.get('user_openai_api_key'):
+                    st.error("⚠️ Please enter your OpenAI API key in the sidebar before generating recommendations.")
+                    return None
+
                 st.info("🔧 **Initializing AI/GenAI Service...**")
                 openai_service = OpenAIService()
                 st.success("✅ AI service initialized successfully")

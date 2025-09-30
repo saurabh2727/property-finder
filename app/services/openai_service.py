@@ -13,12 +13,15 @@ sys.path.append(str(config_path))
 from config import OPENAI_API_KEY, OPENAI_MODEL
 
 class OpenAIService:
-    def __init__(self):
-        if not OPENAI_API_KEY:
-            raise ValueError("OpenAI API key not found. Please set OPENAI_API_KEY in your .env file")
+    def __init__(self, api_key: Optional[str] = None):
+        # Priority: user-provided key > session state > environment variable
+        self.api_key = api_key or st.session_state.get('user_openai_api_key') or OPENAI_API_KEY
 
-        openai.api_key = OPENAI_API_KEY
-        self.client = openai.OpenAI(api_key=OPENAI_API_KEY)
+        if not self.api_key:
+            raise ValueError("OpenAI API key not found. Please enter your API key in the sidebar.")
+
+        openai.api_key = self.api_key
+        self.client = openai.OpenAI(api_key=self.api_key)
 
     def analyze_customer_profile(self, document_content: str) -> Dict[str, Any]:
         """Analyze customer profile document and extract structured information"""

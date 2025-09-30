@@ -120,6 +120,11 @@ def analyze_customer_document(uploaded_file):
             with st.expander("View Extracted Document Content"):
                 st.text_area("Document Content", document_content, height=200, disabled=True)
 
+            # Check API key before proceeding
+            if not st.session_state.get('user_openai_api_key'):
+                st.error("⚠️ Please enter your OpenAI API key in the sidebar before proceeding.")
+                return
+
             # Analyze with AI
             openai_service = OpenAIService()
             customer_profile = openai_service.analyze_customer_profile(document_content)

@@ -83,6 +83,31 @@ def render_clean_sidebar():
         </div>
         """, unsafe_allow_html=True)
 
+        # API Key Configuration
+        st.markdown("**🔑 API Configuration**")
+
+        # Check if API key is already in session state
+        if 'user_openai_api_key' not in st.session_state:
+            st.session_state.user_openai_api_key = None
+
+        # API key input
+        api_key_input = st.text_input(
+            "OpenAI API Key",
+            type="password",
+            value=st.session_state.user_openai_api_key or "",
+            placeholder="sk-...",
+            help="Enter your OpenAI API key. Get one at https://platform.openai.com/api-keys"
+        )
+
+        # Update session state if key is entered
+        if api_key_input:
+            st.session_state.user_openai_api_key = api_key_input
+            st.success("✅ API Key configured")
+        else:
+            st.warning("⚠️ Please enter your OpenAI API key")
+
+        st.markdown("---")
+
         # Progress indicator
         progress = get_workflow_progress()
         st.markdown(f"""

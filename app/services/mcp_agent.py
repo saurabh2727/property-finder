@@ -3,8 +3,12 @@ import json
 from openai import OpenAI
 
 class MCPAgent:
-    def __init__(self):
-        self.client = OpenAI()
+    def __init__(self, api_key=None):
+        # Use user-provided API key from session state or parameter
+        user_api_key = api_key or st.session_state.get('user_openai_api_key')
+        if not user_api_key:
+            raise ValueError("OpenAI API key not found. Please enter your API key in the sidebar.")
+        self.client = OpenAI(api_key=user_api_key)
         self.context = {}
         self.history = []
 
@@ -82,10 +86,20 @@ Provide helpful, specific answers about property investment analysis based on th
 
 class NaturalLanguageInterface:
     def __init__(self):
-        self.agent = MCPAgent()
+        # Check for API key before initializing agent
+        if not st.session_state.get('user_openai_api_key'):
+            self.agent = None
+        else:
+            self.agent = MCPAgent()
 
     def render_enhanced_chat_interface(self):
         """Render clean ChatGPT-like interface"""
+
+        # Check if API key is provided
+        if not self.agent:
+            st.warning("⚠️ Please enter your OpenAI API key in the sidebar to use the AI Assistant.")
+            st.info("Get your API key at: https://platform.openai.com/api-keys")
+            return
 
         # Add ChatGPT-like styling
         st.markdown("""

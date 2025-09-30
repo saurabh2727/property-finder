@@ -61,6 +61,7 @@ logs/
 config/secrets.json
 *.key
 *.pem
+.streamlit/secrets.toml
 
 # Model files
 *.pkl
