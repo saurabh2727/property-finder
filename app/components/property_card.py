@@ -122,7 +122,11 @@ def render_property_card(
     </div>
     """
 
-    st.markdown(card_html, unsafe_allow_html=True)
+    # Use st.html() if available (newer Streamlit versions), otherwise st.markdown()
+    try:
+        st.html(card_html)
+    except AttributeError:
+        st.markdown(card_html, unsafe_allow_html=True)
 
 
 def render_compact_property_card(suburb_data: Dict, rank: Optional[int] = None):
