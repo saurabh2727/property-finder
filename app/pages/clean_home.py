@@ -183,38 +183,6 @@ def render_clean_home_page():
             Create professional client presentations with suburb rankings, property listings, and cash flow projections.
             """)
 
-    with col2:
-        st.markdown("### System Status")
-
-        col1_status, col2_status = st.columns(2)
-        with col1_status:
-            st.metric("Sessions Today", "0")
-        with col2_status:
-            st.metric("Reports Generated", "0")
-
-    # Recent activity placeholder
-    st.markdown("---")
-    st.subheader("Recent Activity")
-
-    if not st.session_state.get('profile_generated', False):
-        st.info("No recent activity. Start by creating a customer profile.")
-    else:
-        # Show progress of current session
-        progress_items = []
-
-        if st.session_state.get('profile_generated'):
-            progress_items.append("✓ Customer profile created")
-
-        if st.session_state.get('data_uploaded'):
-            progress_items.append("✓ Market data imported")
-
-        if st.session_state.get('recommendations'):
-            progress_items.append("✓ Recommendations generated")
-
-        if progress_items:
-            st.markdown("**Current Session Progress:**")
-            for item in progress_items:
-                st.write(item)
 
     # Footer
     st.markdown("---")
