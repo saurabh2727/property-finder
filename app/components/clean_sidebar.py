@@ -109,6 +109,20 @@ def render_clean_sidebar():
         # Clean button styles
         button_style = """
         <style>
+        /* Ensure sidebar has proper width */
+        [data-testid="stSidebar"] {
+            min-width: 280px !important;
+        }
+
+        /* Make all sidebar buttons full width */
+        [data-testid="stSidebar"] button {
+            width: 100% !important;
+            white-space: normal !important;
+            text-align: left !important;
+            padding: 0.5rem 0.75rem !important;
+            font-size: 0.9rem !important;
+        }
+
         .nav-button {
             background: white;
             border: 1px solid #d1d5db;

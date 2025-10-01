@@ -107,18 +107,23 @@ def disable_sidebar_collapse():
     [data-testid="stSidebar"] {
         display: flex !important;
         visibility: visible !important;
-        width: 21rem !important;
-        min-width: 21rem !important;
-        max-width: 21rem !important;
+        width: 280px !important;
+        min-width: 280px !important;
+        max-width: 280px !important;
         flex-shrink: 0 !important;
         transform: none !important;
         transition: none !important;
     }
 
     [data-testid="stSidebar"] > div {
-        width: 21rem !important;
+        width: 280px !important;
         visibility: visible !important;
         display: block !important;
+        padding: 1rem 1rem !important;
+    }
+
+    [data-testid="stSidebar"] .css-1544g2n {
+        padding: 1rem 1rem !important;
     }
 
     /* Ensure sidebar content is visible */
@@ -128,7 +133,7 @@ def disable_sidebar_collapse():
 
     /* Make sure main content doesn't overlap */
     .main {
-        margin-left: 21rem !important;
+        margin-left: 280px !important;
     }
 
     .main .block-container {
@@ -152,26 +157,27 @@ def disable_sidebar_collapse():
             sidebar.classList.remove('collapsed');
             sidebar.style.display = 'flex';
             sidebar.style.visibility = 'visible';
-            sidebar.style.width = '21rem';
-            sidebar.style.minWidth = '21rem';
-            sidebar.style.maxWidth = '21rem';
+            sidebar.style.width = '280px';
+            sidebar.style.minWidth = '280px';
+            sidebar.style.maxWidth = '280px';
             sidebar.style.transform = 'none';
         }
 
         // Adjust main content
         const main = document.querySelector('.main');
         if (main) {
-            main.style.marginLeft = '21rem';
+            main.style.marginLeft = '280px';
         }
     }, 100);
 
     // Run periodically to ensure sidebar stays open
     setInterval(function() {
         const sidebar = document.querySelector('[data-testid="stSidebar"]');
-        if (sidebar && sidebar.offsetWidth < 50) {
+        if (sidebar && sidebar.offsetWidth < 250) {
             sidebar.style.display = 'flex';
             sidebar.style.visibility = 'visible';
-            sidebar.style.width = '21rem';
+            sidebar.style.width = '280px';
+            sidebar.style.minWidth = '280px';
             sidebar.style.transform = 'none';
         }
     }, 500);
