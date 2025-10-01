@@ -344,37 +344,54 @@ def load_sample_profile():
     """Load sample customer profile for testing"""
 
     try:
-        # Embedded sample profile data
+        # Embedded sample profile data matching the JSON file format
         sample_profile = {
             "financial_profile": {
                 "annual_income": "$180,000",
                 "available_equity": "$350,000",
+                "loan_capacity": "$850,000",
                 "current_debt": "$420,000",
-                "cash_available": "$80,000",
-                "loan_capacity": "$850,000"
+                "cash_available": "$80,000"
             },
             "investment_goals": {
-                "primary_purpose": "Capital growth with rental income",
-                "expected_rental_yield": "4-5%",
-                "investment_timeline": "7-10 years",
-                "risk_tolerance": "Moderate"
+                "primary_purpose": "Capital Growth and Rental Income",
+                "investment_timeline": "Long-term (10+ years)",
+                "target_yield": "4.5%",
+                "growth_expectation": "6-8%",
+                "risk_tolerance": "Medium to High"
             },
             "property_preferences": {
-                "property_type": "2-3 bedroom apartment or townhouse",
-                "price_range": "$650,000 - $850,000",
-                "must_have_features": "Modern kitchen, parking, good public transport",
-                "deal_breakers": "High body corporate fees, flood-prone areas"
+                "preferred_suburbs": [
+                    "Parramatta",
+                    "Berwick,Victoria",
+                    "Chatswood",
+                    "Castle Hill",
+                    "Epping",
+                    "Hornsby"
+                ],
+                "property_types": ["Unit/Apartment"],
+                "bedroom_range": "2-3",
+                "price_range": {
+                    "min": "650000",
+                    "max": "850000"
+                },
+                "special_features": [
+                    "Good transport access",
+                    "Parking space",
+                    "Close to shopping",
+                    "Pet-friendly"
+                ]
             },
-            "location_priorities": {
-                "preferred_regions": "Sydney northwest suburbs (Parramatta, Ryde, Epping)",
-                "max_cbd_distance": "30km",
-                "location_factors": "Good schools, transport links, future infrastructure",
-                "lifestyle_requirements": "Family-friendly, shopping nearby"
+            "lifestyle_factors": {
+                "proximity_to_cbd": "Medium",
+                "school_quality": "High",
+                "transport_access": "High",
+                "shopping_amenities": "Medium",
+                "future_development": "High"
             },
-            "additional_info": {
-                "buying_readiness": "Ready to buy within 3-6 months",
-                "additional_notes": "First-time investor, seeking growth areas with rental demand"
-            }
+            "experience_level": "First-time investor",
+            "buying_readiness": "Ready to buy within 3 months",
+            "additional_notes": "Sarah and her spouse are financially stable first-time investors looking for a long-term capital growth investment property in Sydney's northwest/northern suburbs and Victoria. They have done their homework, have finance ready, and are looking to purchase within 3 months. Their preference is for a modern 2-3 bedroom apartment under $850,000 with good transport links and future growth potential."
         }
 
         # Store in session state with backup
@@ -382,7 +399,7 @@ def load_sample_profile():
         update_workflow_step(2)
 
         st.success("⚡ Sample customer profile loaded successfully!")
-        st.info("🎯 **Profile:** Sarah Johnson - First-time investor looking for 2-3 bedroom apartment in Sydney northwest ($650K-$850K budget)")
+        st.info("🎯 **Profile:** Sarah Johnson - First-time investor looking for 2-3 bedroom apartment in Sydney/Victoria ($650K-$850K budget)")
         st.rerun()
 
     except Exception as e:
