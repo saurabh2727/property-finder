@@ -97,50 +97,85 @@ def disable_sidebar_collapse():
     st.markdown("""
     <style>
     /* Hide all possible sidebar collapse buttons */
-    .css-1rs6os,
     [data-testid="collapsedControl"],
-    .css-1v0mbdj,
     button[kind="header"],
-    .css-14xtw13.e8zbici0 {
+    button[kind="headerNoPadding"] {
         display: none !important;
-        visibility: hidden !important;
-        opacity: 0 !important;
-        pointer-events: none !important;
     }
 
-    /* Force sidebar to stay visible */
-    .css-1d391kg,
-    [data-testid="stSidebar"],
-    section[data-testid="stSidebar"] {
-        display: block !important;
+    /* Force sidebar to stay visible and prevent collapse */
+    [data-testid="stSidebar"] {
+        display: flex !important;
         visibility: visible !important;
-        width: 350px !important;
-        min-width: 350px !important;
-        max-width: 350px !important;
-        position: relative !important;
-    }
-    /* Prevent any collapse animations */
-    .css-1d391kg * {
+        width: 21rem !important;
+        min-width: 21rem !important;
+        max-width: 21rem !important;
+        flex-shrink: 0 !important;
+        transform: none !important;
         transition: none !important;
     }
 
-    /* Hide the << symbol specifically */
-    .css-1rs6os::before,
-    .css-1rs6os::after {
-        display: none !important;
+    [data-testid="stSidebar"] > div {
+        width: 21rem !important;
+        visibility: visible !important;
+        display: block !important;
     }
 
-    /* Target the collapse button content */
-    .css-1rs6os .css-1v0mbdj {
-        display: none !important;
+    /* Ensure sidebar content is visible */
+    [data-testid="stSidebar"] * {
+        visibility: visible !important;
     }
 
-    /* Make sure main content adjusts properly */
+    /* Make sure main content doesn't overlap */
+    .main {
+        margin-left: 21rem !important;
+    }
+
     .main .block-container {
-        margin-left: 0 !important;
         padding-left: 1rem !important;
+        padding-right: 1rem !important;
+    }
+
+    /* Hide collapse button in all states */
+    section[data-testid="stSidebar"] button[kind="header"],
+    section[data-testid="stSidebar"] button[kind="headerNoPadding"] {
+        display: none !important;
     }
     </style>
+
+    <script>
+    // Force sidebar to stay open
+    setTimeout(function() {
+        const sidebar = document.querySelector('[data-testid="stSidebar"]');
+        if (sidebar) {
+            // Remove any collapsed classes
+            sidebar.classList.remove('collapsed');
+            sidebar.style.display = 'flex';
+            sidebar.style.visibility = 'visible';
+            sidebar.style.width = '21rem';
+            sidebar.style.minWidth = '21rem';
+            sidebar.style.maxWidth = '21rem';
+            sidebar.style.transform = 'none';
+        }
+
+        // Adjust main content
+        const main = document.querySelector('.main');
+        if (main) {
+            main.style.marginLeft = '21rem';
+        }
+    }, 100);
+
+    // Run periodically to ensure sidebar stays open
+    setInterval(function() {
+        const sidebar = document.querySelector('[data-testid="stSidebar"]');
+        if (sidebar && sidebar.offsetWidth < 50) {
+            sidebar.style.display = 'flex';
+            sidebar.style.visibility = 'visible';
+            sidebar.style.width = '21rem';
+            sidebar.style.transform = 'none';
+        }
+    }, 500);
+    </script>
     """, unsafe_allow_html=True)
 
 def main():
