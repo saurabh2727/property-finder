@@ -57,7 +57,7 @@ class OpenAIService:
                 "risk_tolerance": "low/medium/high"
             }},
             "property_preferences": {{
-                "preferred_suburbs": ["list of preferred areas"],
+                "preferred_suburbs": ["list of preferred areas - IMPORTANT: extract ALL suburbs exactly as written, preserving state information if present (e.g., 'Berwick,Victoria', 'Parramatta,NSW'). Do NOT filter suburbs by state or region."],
                 "property_types": ["house/unit/townhouse/etc"],
                 "bedroom_range": "number of bedrooms preferred",
                 "price_range": {{
@@ -81,9 +81,14 @@ class OpenAIService:
         Customer Document Content:
         {document_content}
 
-        Please analyze the content and provide the structured profile. If certain information is not available,
-        indicate "not specified" for that field. Focus on extracting factual information and making reasonable
-        inferences where appropriate.
+        CRITICAL EXTRACTION RULES:
+        1. Extract ALL suburbs mentioned in preferred_suburbs, regardless of state or location
+        2. Preserve exact suburb names and any state information (e.g., "Berwick,Victoria")
+        3. Do NOT filter or exclude suburbs based on geographic location
+        4. If suburb names include state information separated by comma, keep the exact format
+        5. Focus on extracting factual information exactly as provided
+
+        If certain information is not available, indicate "not specified" for that field.
         """
 
         try:
