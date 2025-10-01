@@ -383,10 +383,12 @@ def get_global_css():
 
     /* Improve Expander Styling */
     .streamlit-expanderHeader {{
-        font-weight: 600;
+        font-weight: 700;
+        font-size: 1.1rem;
         color: {COLORS['dark_navy']};
         border-radius: 8px;
         background: {COLORS['light_gray']};
+        padding: 0.75rem 1rem;
     }}
 
     /* Tab Styling */
