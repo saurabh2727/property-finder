@@ -158,58 +158,9 @@ def render_api_key_input_with_storage():
     2. User mode: Each user provides their own key (persists in browser localStorage)
     """
 
-    # Add custom CSS for better styling
-    st.markdown("""
-    <style>
-    .api-config-container {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 1.5rem;
-        border-radius: 12px;
-        margin-bottom: 1rem;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
-    .api-config-title {
-        color: white;
-        font-size: 1.1rem;
-        font-weight: 600;
-        margin: 0;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-    .status-badge {
-        display: inline-flex;
-        align-items: center;
-        padding: 0.25rem 0.75rem;
-        border-radius: 20px;
-        font-size: 0.75rem;
-        font-weight: 600;
-        margin-top: 0.5rem;
-    }
-    .status-success {
-        background: #10b981;
-        color: white;
-    }
-    .status-warning {
-        background: #f59e0b;
-        color: white;
-    }
-    .status-info {
-        background: #3b82f6;
-        color: white;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
-    # Header with gradient background
-    st.markdown("""
-    <div class="api-config-container">
-        <div class="api-config-title">
-            <span>🔑</span>
-            <span>API Configuration</span>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    # Initialize modal state
+    if 'show_api_config_modal' not in st.session_state:
+        st.session_state.show_api_config_modal = False
 
     # Try to load from Streamlit secrets first (admin key for shared use)
     admin_key_configured = False
@@ -221,45 +172,50 @@ def render_api_key_input_with_storage():
     except:
         pass
 
-    # Mode 1: Admin key is configured (shared key for all users)
+    # Determine status for button display
     if admin_key_configured:
-        st.markdown("""
-        <div style="background: #d1fae5; border-left: 4px solid #10b981; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
-            <div style="display: flex; align-items: center; gap: 0.5rem; color: #065f46; font-weight: 600;">
-                <span>✅</span>
-                <span>API Key Configured (Shared)</span>
-            </div>
-            <div style="color: #047857; font-size: 0.875rem; margin-top: 0.5rem;">
-                Ready to use • No setup required
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+        status_color = "#10b981"
+        status_icon = "✓"
+        status_text = "Configured"
+    elif st.session_state.get('user_openai_api_key'):
+        if st.session_state.get('api_key_save_requested', False):
+            status_color = "#3b82f6"
+            status_icon = "✓"
+            status_text = "Saved"
+        else:
+            status_color = "#f59e0b"
+            status_icon = "●"
+            status_text = "Active"
+    else:
+        status_color = "#ef4444"
+        status_icon = "!"
+        status_text = "Required"
 
-        with st.expander("ℹ️ About Shared API Key", expanded=False):
-            st.markdown("""
-            <div style="padding: 0.5rem;">
-                <h4 style="margin-top: 0; color: #374151;">Using Shared API Key</h4>
-                <p style="color: #6b7280; font-size: 0.9rem;">
-                    An admin API key is configured for all users.
-                </p>
-                <div style="margin: 1rem 0;">
-                    <div style="display: flex; align-items: start; gap: 0.5rem; margin-bottom: 0.5rem;">
-                        <span style="color: #10b981;">✓</span>
-                        <span style="color: #374151;">No need to enter your own key</span>
-                    </div>
-                    <div style="display: flex; align-items: start; gap: 0.5rem; margin-bottom: 0.5rem;">
-                        <span style="color: #10b981;">✓</span>
-                        <span style="color: #374151;">Starts working immediately</span>
-                    </div>
-                    <div style="display: flex; align-items: start; gap: 0.5rem;">
-                        <span style="color: #f59e0b;">⚠</span>
-                        <span style="color: #374151;">Usage costs are shared across all users</span>
-                    </div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+    # Compact button to open modal
+    if st.button(f"{status_icon} **API Configuration** • {status_text}", use_container_width=True, help="Configure OpenAI API Key", type="secondary" if status_text == "Required" else "tertiary"):
+        st.session_state.show_api_config_modal = True
+        st.rerun()
 
-        return st.session_state.user_openai_api_key
+    # Modal dialog using Streamlit's dialog
+    @st.dialog("🔑 API Configuration", width="large")
+    def show_api_config_dialog():
+        """Display API configuration in a dialog"""
+
+        # Mode 1: Admin key configured
+        if admin_key_configured:
+            st.success("✅ API Key Configured (Shared)")
+            st.info("""
+            **Using Shared API Key**
+
+            - ✓ Ready to use - No setup required
+            - ✓ Works immediately
+            - ⚠️ Usage costs shared across all users
+            """)
+
+            if st.button("Close", use_container_width=True):
+                st.session_state.show_api_config_modal = False
+                st.rerun()
+            return
 
     # Mode 2: No admin key - each user provides their own with localStorage
     else:

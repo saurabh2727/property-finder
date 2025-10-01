@@ -1,6 +1,6 @@
 import streamlit as st
 from utils.session_state import get_workflow_progress
-from components.api_key_storage import render_api_key_input_with_storage
+from components.api_key_storage_modal import render_api_key_button_and_modal
 
 def render_clean_sidebar():
     """Render a clean, professional sidebar with minimal design"""
@@ -84,8 +84,8 @@ def render_clean_sidebar():
         </div>
         """, unsafe_allow_html=True)
 
-        # API Key Configuration with browser storage persistence
-        render_api_key_input_with_storage()
+        # API Key Configuration - Compact button with modal
+        render_api_key_button_and_modal()
 
         st.markdown("---")
 
