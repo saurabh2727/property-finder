@@ -1,7 +1,7 @@
 import streamlit as st
 from utils.document_processor import DocumentProcessor
 from services.openai_service import OpenAIService
-from utils.session_state import update_workflow_step, render_workflow_progress
+from utils.session_state import update_workflow_step, render_workflow_progress, save_customer_profile
 import json
 
 def render_customer_profile_page():
@@ -41,20 +41,27 @@ def collect_customer_profile():
         help="Upload the completed customer questionnaire document"
     )
 
+    # Action buttons
+    col_a, col_b, col_c = st.columns(3)
+
+    with col_a:
+        if uploaded_file is not None:
+            if st.button("🤖 Analyze Document", type="primary", use_container_width=True):
+                analyze_customer_document(uploaded_file)
+
+    with col_b:
+        if st.button("✏️ Enter Manually", use_container_width=True):
+            show_manual_profile_form()
+
+    with col_c:
+        if st.button("⚡ Load Sample Profile", use_container_width=True):
+            load_sample_profile()
+
     col1, col2 = st.columns([2, 1])
 
     with col1:
         if uploaded_file is not None:
             st.success(f"✅ File uploaded: {uploaded_file.name}")
-
-            # Process document button
-            if st.button("🤖 Analyze Document with AI", type="primary"):
-                analyze_customer_document(uploaded_file)
-
-        # Manual entry option
-        st.markdown("### Alternative: Manual Profile Entry")
-        if st.button("✏️ Enter Profile Manually"):
-            show_manual_profile_form()
 
     with col2:
         st.markdown("### Sample Questions")
@@ -324,3 +331,51 @@ def export_profile_json(profile):
         file_name="customer_profile.json",
         mime="application/json"
     )
+
+def load_sample_profile():
+    """Load sample customer profile for testing"""
+
+    try:
+        # Embedded sample profile data
+        sample_profile = {
+            "financial_profile": {
+                "annual_income": "$180,000",
+                "available_equity": "$350,000",
+                "current_debt": "$420,000",
+                "cash_available": "$80,000",
+                "loan_capacity": "$850,000"
+            },
+            "investment_goals": {
+                "primary_purpose": "Capital growth with rental income",
+                "expected_rental_yield": "4-5%",
+                "investment_timeline": "7-10 years",
+                "risk_tolerance": "Moderate"
+            },
+            "property_preferences": {
+                "property_type": "2-3 bedroom apartment or townhouse",
+                "price_range": "$650,000 - $850,000",
+                "must_have_features": "Modern kitchen, parking, good public transport",
+                "deal_breakers": "High body corporate fees, flood-prone areas"
+            },
+            "location_priorities": {
+                "preferred_regions": "Sydney northwest suburbs (Parramatta, Ryde, Epping)",
+                "max_cbd_distance": "30km",
+                "location_factors": "Good schools, transport links, future infrastructure",
+                "lifestyle_requirements": "Family-friendly, shopping nearby"
+            },
+            "additional_info": {
+                "buying_readiness": "Ready to buy within 3-6 months",
+                "additional_notes": "First-time investor, seeking growth areas with rental demand"
+            }
+        }
+
+        # Store in session state with backup
+        save_customer_profile(sample_profile)
+        update_workflow_step(2)
+
+        st.success("⚡ Sample customer profile loaded successfully!")
+        st.info("🎯 **Profile:** Sarah Johnson - First-time investor looking for 2-3 bedroom apartment in Sydney northwest ($650K-$850K budget)")
+        st.rerun()
+
+    except Exception as e:
+        st.error(f"Error loading sample profile: {str(e)}")
