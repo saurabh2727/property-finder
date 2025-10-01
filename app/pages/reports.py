@@ -31,8 +31,8 @@ def render_reports_page():
 
     # Hero Section
     render_hero_section(
-        title="📋 Comprehensive Property Reports",
-        subtitle="Professional investment analysis and client presentations"
+        title="📋 Client Property Reports",
+        subtitle="Professional property analysis for client presentations"
     )
 
     # Progress indicator
@@ -84,8 +84,8 @@ def check_prerequisites():
         # Show session recovery option
         with st.expander("🔧 Troubleshooting"):
             st.write("**Session Status:**")
-            st.write(f"- Profile Generated: {'✅' if st.session_state.get('profile_generated') else '❌'}")
-            st.write(f"- Data Uploaded: {'✅' if st.session_state.get('data_uploaded') else '❌'}")
+            st.write(f"- Client Profile Generated: {'✅' if st.session_state.get('profile_generated') else '❌'}")
+            st.write(f"- Market Data Uploaded: {'✅' if st.session_state.get('data_uploaded') else '❌'}")
             st.write(f"- Recommendations Available: {'✅' if st.session_state.get('recommendations') else '❌'}")
             st.write(f"- Backup Available: {'✅' if st.session_state.get('session_backup_available') else '❌'}")
 
@@ -98,7 +98,7 @@ def check_prerequisites():
 
         col1, col2, col3 = st.columns(3)
         with col1:
-            if st.button("← Customer Profile"):
+            if st.button("← Client Profile"):
                 st.session_state.current_page = 'customer_profile'
                 st.rerun()
 
@@ -798,7 +798,8 @@ def generate_pdf_report():
             )
 
             # Title page
-            story.append(Paragraph("Property Investment Analysis Report", title_style))
+            story.append(Paragraph("Property Analysis Report", title_style))
+            story.append(Paragraph("For Property Agents & Advisors", styles['Normal']))
             story.append(Spacer(1, 20))
             story.append(Paragraph(f"Generated on: {datetime.now().strftime('%B %d, %Y')}", styles['Normal']))
             story.append(Spacer(1, 40))
@@ -821,7 +822,7 @@ def generate_pdf_report():
                 story.append(Paragraph(f"Analysis conducted using: {engine_display.get(engine_used, engine_used)}", styles['Normal']))
                 story.append(Spacer(1, 12))
 
-                story.append(Paragraph(f"Our analysis has identified {len(top_suburbs)} top investment opportunities that align with your investment criteria:", styles['Normal']))
+                story.append(Paragraph(f"Our analysis has identified {len(top_suburbs)} top property opportunities that align with your client's requirements:", styles['Normal']))
                 story.append(Spacer(1, 12))
 
                 # Top suburbs summary
@@ -854,42 +855,53 @@ def generate_pdf_report():
 
             story.append(PageBreak())
 
-            # Customer Profile Section
+            # Client Profile Section
             if customer_profile:
-                story.append(Paragraph("Investment Profile", heading_style))
+                story.append(Paragraph("Client Property Profile", heading_style))
 
-                # Personal details
-                personal = customer_profile.get('personal_details', {})
-                if personal:
-                    story.append(Paragraph("<b>Investor Profile:</b>", styles['Normal']))
-                    if personal.get('age'):
-                        story.append(Paragraph(f"Age: {personal['age']}", styles['Normal']))
-                    if personal.get('location'):
-                        story.append(Paragraph(f"Location: {personal['location']}", styles['Normal']))
-                    story.append(Spacer(1, 12))
-
-                # Financial details
-                financial = customer_profile.get('financial_details', {})
+                # Financial Profile
+                financial = customer_profile.get('financial_profile', {})
                 if financial:
                     story.append(Paragraph("<b>Financial Capacity:</b>", styles['Normal']))
                     if financial.get('annual_income'):
                         story.append(Paragraph(f"Annual Income: {financial['annual_income']}", styles['Normal']))
-                    if financial.get('investment_budget'):
-                        story.append(Paragraph(f"Investment Budget: {financial['investment_budget']}", styles['Normal']))
                     if financial.get('available_equity'):
                         story.append(Paragraph(f"Available Equity: {financial['available_equity']}", styles['Normal']))
+                    if financial.get('loan_capacity'):
+                        story.append(Paragraph(f"Loan Capacity: {financial['loan_capacity']}", styles['Normal']))
+                    if financial.get('cash_available'):
+                        story.append(Paragraph(f"Cash Available: {financial['cash_available']}", styles['Normal']))
                     story.append(Spacer(1, 12))
 
-                # Investment goals
+                # Property Goals
                 goals = customer_profile.get('investment_goals', {})
                 if goals:
-                    story.append(Paragraph("<b>Investment Objectives:</b>", styles['Normal']))
+                    story.append(Paragraph("<b>Property Requirements:</b>", styles['Normal']))
                     if goals.get('primary_purpose'):
                         story.append(Paragraph(f"Primary Purpose: {goals['primary_purpose']}", styles['Normal']))
                     if goals.get('investment_timeline'):
-                        story.append(Paragraph(f"Investment Timeline: {goals['investment_timeline']}", styles['Normal']))
+                        story.append(Paragraph(f"Timeline: {goals['investment_timeline']}", styles['Normal']))
+                    if goals.get('target_yield'):
+                        story.append(Paragraph(f"Target Yield: {goals['target_yield']}", styles['Normal']))
                     if goals.get('risk_tolerance'):
                         story.append(Paragraph(f"Risk Tolerance: {goals['risk_tolerance']}", styles['Normal']))
+                    story.append(Spacer(1, 12))
+
+                # Property Preferences
+                prefs = customer_profile.get('property_preferences', {})
+                if prefs:
+                    story.append(Paragraph("<b>Property Preferences:</b>", styles['Normal']))
+                    if prefs.get('preferred_suburbs'):
+                        suburbs_list = ', '.join(prefs['preferred_suburbs'][:5])
+                        story.append(Paragraph(f"Preferred Areas: {suburbs_list}", styles['Normal']))
+                    if prefs.get('property_types'):
+                        types_list = ', '.join(prefs['property_types'])
+                        story.append(Paragraph(f"Property Types: {types_list}", styles['Normal']))
+                    if prefs.get('bedroom_range'):
+                        story.append(Paragraph(f"Bedrooms: {prefs['bedroom_range']}", styles['Normal']))
+                    price_range = prefs.get('price_range', {})
+                    if isinstance(price_range, dict) and price_range.get('min') and price_range.get('max'):
+                        story.append(Paragraph(f"Budget: ${price_range['min']} - ${price_range['max']}", styles['Normal']))
                     story.append(Spacer(1, 12))
 
                 story.append(PageBreak())
@@ -961,13 +973,17 @@ def generate_pdf_report():
             story.append(PageBreak())
             story.append(Paragraph("Important Disclaimer", heading_style))
             disclaimer_text = """
-            This report is generated for informational purposes only and should not be considered as financial advice.
-            Property investment involves risks, and past performance is not indicative of future results.
-            We recommend consulting with qualified financial advisors and conducting thorough due diligence
-            before making any investment decisions. Market conditions can change rapidly, and property values may fluctuate.
+            This report is generated for property agent use and client presentation purposes only.
+            It should not be considered as financial or legal advice. Property transactions involve risks,
+            and past performance is not indicative of future results. Clients should consult with qualified
+            financial advisors, conveyancers, and conduct thorough due diligence before making any property decisions.
 
-            This analysis is based on available market data and AI-powered insights, but should be supplemented
-            with professional property inspections, legal advice, and current market assessments.
+            Market conditions can change rapidly, and property values may fluctuate. This analysis is based on
+            available market data and AI-powered insights at the time of generation, and should be supplemented
+            with current market assessments, professional property inspections, and legal advice.
+
+            Property agents should verify all information and comply with relevant real estate regulations
+            when presenting this report to clients.
             """
             story.append(Paragraph(disclaimer_text, styles['Normal']))
 

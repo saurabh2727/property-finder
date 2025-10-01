@@ -12,8 +12,8 @@ def render_clean_home_page():
 
     # Hero Section
     render_hero_section(
-        title="🏡 Property Investment Analysis Platform",
-        subtitle="Data-driven insights for smarter property investment decisions"
+        title="🏡 Property Agent Analysis Platform",
+        subtitle="Empower your clients with data-driven property recommendations"
     )
 
     # Quick Actions Section - Prominent at top
@@ -42,7 +42,7 @@ def render_clean_home_page():
     if st.session_state.get('workflow_step', 1) > 1:
         metrics = []
         if st.session_state.get('profile_generated'):
-            metrics.append({'icon': '✓', 'value': 'Complete', 'label': 'Customer Profile'})
+            metrics.append({'icon': '✓', 'value': 'Complete', 'label': 'Client Profile'})
         if st.session_state.get('data_uploaded'):
             suburb_count = len(st.session_state.get('suburb_data', []))
             metrics.append({'icon': '📊', 'value': f"{suburb_count}", 'label': 'Suburbs Analyzed'})
