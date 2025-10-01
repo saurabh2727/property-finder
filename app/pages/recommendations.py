@@ -693,10 +693,18 @@ def convert_ai_to_ranked_list(ai_recommendations, df, num_recommendations):
                 ranked_suburbs.append(suburb_row)
             else:
                 # No match found - create synthetic entry from AI data
+                # Parse state from suburb_name if it contains comma (e.g., "Box Hill,Victoria")
+                parsed_state = ''
+                parsed_suburb = suburb_name
+                if ',' in suburb_name:
+                    parts = suburb_name.split(',')
+                    parsed_suburb = parts[0].strip()
+                    parsed_state = parts[1].strip() if len(parts) > 1 else ''
+
                 # Create synthetic row with AI data
                 synthetic_row = pd.Series({
-                    suburb_col: suburb_name,
-                    'State': 'NSW',  # Default for Sydney suburbs
+                    suburb_col: parsed_suburb,
+                    'State': parsed_state,
                     'AI_Score': ai_score,
                     'AI_Reasons': '; '.join(ai_suburb.get('reasons', [])),
                     'Investment_Potential': ai_suburb.get('investment_potential', 'medium'),
@@ -1015,7 +1023,12 @@ def display_top_recommendations(recommendations):
                 else:
                     score_indicator = "🥉"
 
-            with st.expander(f"{idx}. {score_indicator} {suburb_name}, {state}", expanded=False):
+            # Format display name - avoid duplicate state if already in suburb_name
+            display_name = suburb_name
+            if state and state not in suburb_name:
+                display_name = f"{suburb_name}, {state}"
+
+            with st.expander(f"{idx}. {score_indicator} {display_name}", expanded=False):
 
                 col1, col2 = st.columns([2, 1])
 

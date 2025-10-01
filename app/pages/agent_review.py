@@ -145,7 +145,13 @@ def render_recommendation_review():
         suburb_name = suburb.get('Suburb Name', suburb.get('Suburb', f'Suburb {idx}'))
         suburb_key = f"{suburb_name}_{idx}"
 
-        with st.expander(f"#{idx} {suburb_name}, {suburb.get('State', '')}", expanded=idx <= 3):
+        # Format display name - avoid duplicate state if already in suburb_name
+        state = suburb.get('State', '')
+        display_name = suburb_name
+        if state and state not in suburb_name:
+            display_name = f"{suburb_name}, {state}"
+
+        with st.expander(f"#{idx} {display_name}", expanded=idx <= 3):
 
             col1, col2, col3 = st.columns([2, 1, 1])
 
