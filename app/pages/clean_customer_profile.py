@@ -3,13 +3,21 @@ from utils.document_processor import DocumentProcessor
 from services.openai_service import OpenAIService
 from utils.session_state import update_workflow_step, save_customer_profile, backup_session_data
 from components.sample_files import render_sample_files_section
+from styles.global_styles import get_global_css, COLORS
+from components.property_card import render_hero_section
 import json
 
 def render_clean_customer_profile_page():
     """Render a clean customer profiling page"""
 
-    st.title("Customer Profiling")
-    st.markdown("**Analyze customer requirements and investment preferences**")
+    # Inject global CSS
+    st.markdown(get_global_css(), unsafe_allow_html=True)
+
+    # Hero Section
+    render_hero_section(
+        title="👤 Customer Profiling",
+        subtitle="Analyze customer requirements and investment preferences"
+    )
 
     # Progress indicator
     st.markdown("""

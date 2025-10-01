@@ -514,7 +514,51 @@ def display_top_recommendations(recommendations):
         st.warning("No recommendations available. Please regenerate.")
         return
 
-    # Display top suburbs with enhanced information
+    # Display top 3 suburbs as featured cards
+    st.markdown("### 🏆 Top 3 Picks")
+
+    top_3 = top_suburbs.head(3)
+    cols = st.columns(3)
+
+    for idx, ((_, suburb), col) in enumerate(zip(top_3.iterrows(), cols), 1):
+        suburb_name = suburb.get('Suburb Name', suburb.get('Suburb', 'Unknown'))
+        state = suburb.get('State', '')
+
+        # Calculate investment score (normalize from different sources)
+        investment_score = None
+        if 'AI_Score' in suburb:
+            investment_score = suburb['AI_Score'] / 10  # AI scores are 0-100, normalize to 0-10
+        elif 'Investment_Score_Predicted' in suburb:
+            investment_score = suburb['Investment_Score_Predicted'] * 10  # Predicted is 0-1
+        elif 'Composite_Score' in suburb:
+            investment_score = suburb['Composite_Score'] * 10  # Composite is 0-1
+
+        features = {}
+        if 'School Rating' in suburb:
+            features['school_rating'] = suburb['School Rating']
+        if 'Public Transport Score' in suburb:
+            features['transport_score'] = suburb['Public Transport Score']
+        if 'Vacancy Rate' in suburb:
+            features['vacancy_rate'] = suburb['Vacancy Rate']
+
+        with col:
+            render_property_card(
+                suburb_name=suburb_name,
+                state=state,
+                median_price=suburb.get('Median Price', 0),
+                rental_yield=suburb.get('Rental Yield on Houses', 0),
+                investment_score=investment_score,
+                growth_rate=suburb.get('10 yr Avg. Annual Growth'),
+                distance_cbd=suburb.get('Distance (km) to CBD', suburb.get('Distance from CBD (km)')),
+                features=features if features else None,
+                rank=idx,
+                show_image=True
+            )
+
+    st.markdown("---")
+    st.markdown("### 📋 All Recommendations")
+
+    # Display remaining suburbs with enhanced information
     for idx, (_, suburb) in enumerate(top_suburbs.head(10).iterrows(), 1):
         # Handle both 'Suburb' and 'Suburb Name' columns
         suburb_name = suburb.get('Suburb Name', suburb.get('Suburb', 'Unknown'))
@@ -547,7 +591,7 @@ def display_top_recommendations(recommendations):
             else:
                 score_indicator = "🥉"
 
-        with st.expander(f"{idx}. {score_indicator} {suburb_name}, {state}", expanded=idx <= 3):
+        with st.expander(f"{idx}. {score_indicator} {suburb_name}, {state}", expanded=False):
 
             col1, col2 = st.columns([2, 1])
 

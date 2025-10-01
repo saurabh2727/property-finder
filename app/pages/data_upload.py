@@ -4,14 +4,22 @@ from utils.document_processor import DocumentProcessor
 from utils.htag_processor import HtAGProcessor
 from utils.session_state import update_workflow_step, save_suburb_data, backup_session_data
 from components.sample_files import render_sample_files_section
+from styles.global_styles import get_global_css, COLORS
+from components.property_card import render_hero_section
 import plotly.express as px
 import plotly.graph_objects as go
 
 def render_data_upload_page():
     """Render the data upload and validation page"""
 
-    st.title("📊 Data Upload & Integration")
-    st.subheader("Import Suburb Market Data")
+    # Inject global CSS
+    st.markdown(get_global_css(), unsafe_allow_html=True)
+
+    # Hero Section
+    render_hero_section(
+        title="📊 Data Upload & Integration",
+        subtitle="Import suburb market data from multiple sources"
+    )
 
     # Progress indicator
     progress_cols = st.columns(5)

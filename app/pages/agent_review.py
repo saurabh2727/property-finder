@@ -6,6 +6,8 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import json
 from datetime import datetime
+from styles.global_styles import get_global_css, COLORS
+from components.property_card import render_hero_section
 
 def render_agent_review_page():
     """
@@ -13,8 +15,14 @@ def render_agent_review_page():
     Interface for agents to review recommendations, adjust weights, and add insights
     """
 
-    st.title("👨‍💼 Agent Review & Notes")
-    st.subheader("Review Recommendations & Add Professional Insights")
+    # Inject global CSS
+    st.markdown(get_global_css(), unsafe_allow_html=True)
+
+    # Hero Section
+    render_hero_section(
+        title="👨‍💼 Agent Review & Notes",
+        subtitle="Review recommendations and add professional insights"
+    )
 
     # Import session management functions
     from utils.session_state import recover_session_data, backup_session_data

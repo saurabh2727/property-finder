@@ -17,7 +17,7 @@ from pages.agent_review import render_agent_review_page
 from components.clean_sidebar import render_clean_sidebar
 from utils.session_state import initialize_session_state
 from services.mcp_agent import render_chat_page
-from styles.professional_styles import apply_professional_styles
+from styles.global_styles import get_global_css
 
 # Inject custom CSS to remove top padding from all pages
 st.markdown(
@@ -153,8 +153,8 @@ def main():
         st.info("🔄 **Session Restored**: Your previous work has been automatically recovered.")
         st.session_state.recovery_notification_shown = True
 
-    # Apply professional styles
-    apply_professional_styles()
+    # Apply global design system
+    st.markdown(get_global_css(), unsafe_allow_html=True)
 
     # Choose sidebar approach:
     # Option 1: Add toggle button when collapsed (current approach)

@@ -20,12 +20,20 @@ from reportlab.graphics.charts.barcharts import VerticalBarChart
 import tempfile
 import os
 from utils.session_state import backup_session_data
+from styles.global_styles import get_global_css, COLORS
+from components.property_card import render_hero_section
 
 def render_reports_page():
     """Render the comprehensive reports page"""
 
-    st.title("📋 Comprehensive Property Reports")
-    st.subheader("Professional Investment Analysis Reports")
+    # Inject global CSS
+    st.markdown(get_global_css(), unsafe_allow_html=True)
+
+    # Hero Section
+    render_hero_section(
+        title="📋 Comprehensive Property Reports",
+        subtitle="Professional investment analysis and client presentations"
+    )
 
     # Progress indicator
     progress_cols = st.columns(5)
