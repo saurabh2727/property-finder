@@ -1,5 +1,6 @@
 import streamlit as st
 from utils.session_state import get_workflow_progress
+from components.api_key_storage import render_api_key_input_with_storage
 
 def render_clean_sidebar():
     """Render a clean, professional sidebar with minimal design"""
@@ -83,70 +84,8 @@ def render_clean_sidebar():
         </div>
         """, unsafe_allow_html=True)
 
-        # API Key Configuration
-        st.markdown("**🔑 API Configuration**")
-
-        # Check if API key is already in session state or secrets
-        if 'user_openai_api_key' not in st.session_state:
-            # Try to load from Streamlit secrets first
-            try:
-                if hasattr(st, 'secrets') and 'OPENAI_API_KEY' in st.secrets:
-                    st.session_state.user_openai_api_key = st.secrets['OPENAI_API_KEY']
-                else:
-                    st.session_state.user_openai_api_key = None
-            except:
-                st.session_state.user_openai_api_key = None
-
-        # Check if API key is configured in secrets
-        admin_key_configured = False
-        try:
-            if hasattr(st, 'secrets') and 'OPENAI_API_KEY' in st.secrets:
-                admin_key_configured = True
-        except:
-            pass
-
-        # Show different UI based on whether admin key is configured
-        if admin_key_configured:
-            st.success("✅ API Key configured (Admin)")
-            if st.button("🔄 Use Custom API Key", help="Override admin key with your own"):
-                st.session_state.use_custom_key = True
-                st.rerun()
-        else:
-            # API key input
-            api_key_input = st.text_input(
-                "OpenAI API Key",
-                type="password",
-                value=st.session_state.user_openai_api_key or "",
-                placeholder="sk-...",
-                help="Enter your OpenAI API key. Get one at https://platform.openai.com/api-keys"
-            )
-
-            # Update session state if key is entered
-            if api_key_input:
-                st.session_state.user_openai_api_key = api_key_input
-                st.success("✅ API Key configured")
-            else:
-                st.warning("⚠️ Please enter your OpenAI API key")
-
-        # Allow custom key override if admin key is configured
-        if admin_key_configured and st.session_state.get('use_custom_key', False):
-            api_key_input = st.text_input(
-                "Custom OpenAI API Key",
-                type="password",
-                value="",
-                placeholder="sk-...",
-                help="Override admin key with your own API key"
-            )
-            if api_key_input:
-                st.session_state.user_openai_api_key = api_key_input
-                st.success("✅ Using custom API Key")
-            if st.button("↩️ Use Admin Key"):
-                st.session_state.use_custom_key = False
-                try:
-                    st.session_state.user_openai_api_key = st.secrets['OPENAI_API_KEY']
-                except:
-                    pass
-                st.rerun()
+        # API Key Configuration with browser storage persistence
+        render_api_key_input_with_storage()
 
         st.markdown("---")
 

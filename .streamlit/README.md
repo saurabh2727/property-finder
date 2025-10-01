@@ -1,36 +1,59 @@
 # Streamlit Configuration
 
-## 🔑 API Key Setup (Recommended - Eliminates Manual Entry!)
+## 🔑 API Key Setup - Two Modes
 
-### For Streamlit Cloud Deployment (Recommended)
-1. Go to your [Streamlit Cloud dashboard](https://share.streamlit.io/)
-2. Click on your app → "Settings" → "Secrets"
-3. Add the following:
-   ```toml
-   OPENAI_API_KEY = "sk-your-actual-api-key-here"
-   ```
-4. Click "Save" - the app will restart with the API key pre-configured
+### Mode 1: Shared Admin Key (Recommended for Single User/Testing)
 
-### For Local Development
-1. Create `secrets.toml` in this directory:
+**Use Case:** You're the only user or want to provide a shared key for all users
+
+**Setup:**
+1. **For Streamlit Cloud:**
+   - Go to your [Streamlit Cloud dashboard](https://share.streamlit.io/)
+   - Click on your app → "Settings" → "Secrets"
+   - Add: `OPENAI_API_KEY = "sk-your-actual-api-key-here"`
+   - Click "Save"
+
+2. **For Local Development:**
    ```bash
+   cd .streamlit
    cp secrets.toml.example secrets.toml
+   # Edit secrets.toml and add your key
    ```
-2. Edit `secrets.toml` and add your actual API key
-3. The file is in `.gitignore` so it won't be committed
 
-## Benefits of Using Secrets
+**Benefits:**
+- ✅ No API key entry required for any user
+- ✅ Immediate access for everyone
+- ⚠️ All users share the same OpenAI usage/costs
 
-✅ **No more entering API key every session** - Key persists across all sessions
-✅ **Secure** - Keys stored in Streamlit secrets, not in code
-✅ **Flexible** - Users can still override with their own key if needed
-✅ **Works everywhere** - Both local development and cloud deployment
+---
+
+### Mode 2: Per-User Keys (Recommended for Multiple Users)
+
+**Use Case:** Multiple users, each with their own OpenAI API key
+
+**Setup:**
+- **Don't configure** `OPENAI_API_KEY` in secrets
+- Each user enters their own key in the sidebar
+- Key persists for their browser session
+
+**Benefits:**
+- ✅ Each user controls their own costs
+- ✅ Separate usage tracking per user
+- ⚠️ Users need to re-enter key if browser tab is closed
+
+---
 
 ## Files
 
 - `config.toml` - Streamlit app configuration (UI, theme, etc.)
 - `secrets.toml.example` - Template for API keys (DO NOT commit secrets.toml)
+- `secrets.toml` - Your actual secrets (auto-ignored by git)
 
-## Alternative: User-Provided Keys
+## Recommendation
 
-If you don't configure `OPENAI_API_KEY` in secrets, users will be prompted to enter their own API key in the sidebar each session.
+| Scenario | Recommended Mode |
+|----------|------------------|
+| Personal use | Mode 1 (Shared Admin Key) |
+| Team with shared budget | Mode 1 (Shared Admin Key) |
+| Multiple users, separate billing | Mode 2 (Per-User Keys) |
+| Public demo | Mode 2 (Per-User Keys) |
