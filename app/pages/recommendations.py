@@ -17,22 +17,20 @@ def render_recommendations_page():
 
     # Hero Section
     render_hero_section(
-        title="⭐ AI Property Recommendations",
-        subtitle="Machine Learning-powered insights tailored to your investment goals"
+        title="🎯 Intelligent Analysis & Recommendations",
+        subtitle="ML-powered feature analysis combined with AI-generated insights"
     )
 
-    # Progress indicator
-    progress_cols = st.columns(5)
+    # Progress indicator (now 4 steps instead of 5)
+    progress_cols = st.columns(4)
     with progress_cols[0]:
         st.markdown("✅ Step 1: Customer Profile")
     with progress_cols[1]:
         st.markdown("✅ Step 2: Data Upload")
     with progress_cols[2]:
-        st.markdown("✅ Step 3: Analysis")
+        st.markdown("🔄 **Step 3: Analysis & Recommendations**")
     with progress_cols[3]:
-        st.markdown("🔄 **Step 4: Recommendations**")
-    with progress_cols[4]:
-        st.markdown("⏳ Step 5: Reports")
+        st.markdown("⏳ Step 4: Reports")
 
     st.markdown("---")
 
@@ -70,70 +68,458 @@ def check_prerequisites():
     return True
 
 def generate_new_recommendations(df, customer_profile):
-    """Generate new recommendations using ML and AI"""
+    """Generate new recommendations using unified ML + AI workflow"""
 
-    st.subheader("🤖 Generate AI Recommendations")
+    st.markdown("## 🎯 Three-Stage Analysis Workflow")
+
+    st.info("**Accuracy-First Approach:** ML provides mathematical foundation → AI adds contextual intelligence → Combined for best results")
+
+    # Stage 1: Data Filtering (Optional)
+    with st.expander("📊 Stage 1: Data Filtering (Optional)", expanded=False):
+        render_filtering_stage(df, customer_profile)
+
+    # Stage 2: ML Feature Analysis (Required)
+    with st.expander("🤖 Stage 2: ML Feature Analysis", expanded=True):
+        ml_results = render_ml_training_stage(df, customer_profile)
+
+    # Stage 3: AI-Enhanced Recommendations (Required)
+    with st.expander("⭐ Stage 3: AI-Enhanced Recommendations", expanded=True):
+        render_ai_recommendations_stage(df, customer_profile, ml_results)
+
+def render_filtering_stage(df, customer_profile):
+    """Render data filtering stage (optional)"""
+
+    st.markdown("### Configure Analysis Parameters")
+    st.info("Filter suburbs to focus your analysis on specific criteria. This stage is optional - you can skip to ML training if you prefer to analyze all suburbs.")
+
+    # Customer profile summary
+    with st.expander("👤 Customer Profile Summary", expanded=False):
+        display_customer_summary(customer_profile)
+
+    col1, col2 = st.columns([1, 1])
+
+    with col1:
+        st.markdown("#### 💰 Budget Filters")
+
+        # Price range
+        if 'Median Price' in df.columns:
+            price_min, price_max = int(df['Median Price'].min()), int(df['Median Price'].max())
+
+            # Get customer preferred range
+            customer_price = customer_profile.get('property_preferences', {}).get('price_range', {})
+            customer_min = customer_price.get('min', str(price_min))
+            customer_max = customer_price.get('max', str(price_max))
+
+            try:
+                default_min = int(str(customer_min).replace('$', '').replace(',', ''))
+                default_max = int(str(customer_max).replace('$', '').replace(',', ''))
+            except:
+                default_min, default_max = price_min, price_max
+
+            # Ensure values are step-aligned and within bounds
+            def align_to_step(value, step, min_val, max_val):
+                """Align value to step and ensure it's within bounds"""
+                aligned = round(value / step) * step
+                return max(min_val, min(max_val, aligned))
+
+            aligned_min = align_to_step(max(price_min, default_min), 10000, price_min, price_max)
+            aligned_max = align_to_step(min(price_max, default_max), 10000, price_min, price_max)
+
+            # Ensure min <= max
+            if aligned_min > aligned_max:
+                aligned_min, aligned_max = aligned_max, aligned_min
+
+            price_range = st.slider(
+                "Price Range ($)",
+                min_value=price_min,
+                max_value=price_max,
+                value=(aligned_min, aligned_max),
+                step=10000,
+                format="$%d"
+            )
+
+        # Rental yield filter
+        if 'Rental Yield on Houses' in df.columns:
+            yield_min, yield_max = float(df['Rental Yield on Houses'].min()), float(df['Rental Yield on Houses'].max())
+
+            customer_target_yield = customer_profile.get('investment_goals', {}).get('target_yield', '4.0')
+            try:
+                default_yield = float(str(customer_target_yield).replace('%', ''))
+            except:
+                default_yield = 4.0
+
+            # Align yield value to step
+            def align_to_step(value, step, min_val, max_val):
+                """Align value to step and ensure it's within bounds"""
+                aligned = round(value / step) * step
+                return max(min_val, min(max_val, aligned))
+
+            aligned_yield = align_to_step(max(yield_min, default_yield * 0.8), 0.1, yield_min, yield_max)
+
+            min_yield = st.slider(
+                "Minimum Rental Yield (%)",
+                min_value=yield_min,
+                max_value=yield_max,
+                value=aligned_yield,
+                step=0.1
+            )
+
+    with col2:
+        st.markdown("#### 📍 Location Filters")
+
+        # State filter
+        if 'State' in df.columns:
+            available_states = df['State'].unique().tolist()
+            selected_states = st.multiselect(
+                "States",
+                available_states,
+                default=available_states
+            )
+
+        # Distance to CBD
+        if 'Distance (km) to CBD' in df.columns:
+            distance_max = int(df['Distance (km) to CBD'].max())
+
+            # Get customer preference
+            cbd_importance = customer_profile.get('lifestyle_factors', {}).get('proximity_to_cbd', 'Medium').lower()
+            if cbd_importance == 'high':
+                default_distance = min(20, distance_max)
+            elif cbd_importance == 'low':
+                default_distance = distance_max
+            else:
+                default_distance = min(35, distance_max)
+
+            # Align distance value to step
+            def align_to_step(value, step, min_val, max_val):
+                """Align value to step and ensure it's within bounds"""
+                aligned = round(value / step) * step
+                return max(min_val, min(max_val, aligned))
+
+            aligned_distance = align_to_step(default_distance, 5, 0, distance_max)
+
+            max_distance = st.slider(
+                "Maximum Distance to CBD (km)",
+                min_value=0,
+                max_value=distance_max,
+                value=aligned_distance,
+                step=5
+            )
+
+    # Advanced filters
+    with st.expander("⚙️ Advanced Filters", expanded=False):
+        col1, col2 = st.columns(2)
+
+        with col1:
+            # Growth rate filter
+            if '10 yr Avg. Annual Growth' in df.columns:
+                growth_min = st.number_input(
+                    "Minimum 10-year Growth Rate (%)",
+                    min_value=0.0,
+                    max_value=20.0,
+                    value=3.0,
+                    step=0.5
+                )
+
+            # Vacancy rate filter
+            if 'Vacancy Rate' in df.columns:
+                max_vacancy = st.number_input(
+                    "Maximum Vacancy Rate (%)",
+                    min_value=0.0,
+                    max_value=10.0,
+                    value=5.0,
+                    step=0.5
+                )
+
+        with col2:
+            # Population filter
+            if 'Population' in df.columns:
+                min_population = st.number_input(
+                    "Minimum Population",
+                    min_value=0,
+                    max_value=100000,
+                    value=5000,
+                    step=1000
+                )
+
+    # Apply filters
+    st.markdown("#### 🔍 Apply Filters")
+
+    if st.button("🎯 Filter Suburbs", type="primary", use_container_width=True):
+        filtered_df = apply_filters(
+            df,
+            price_range=price_range if 'Median Price' in df.columns else None,
+            min_yield=min_yield if 'Rental Yield on Houses' in df.columns else None,
+            selected_states=selected_states if 'State' in df.columns else None,
+            max_distance=max_distance if 'Distance (km) to CBD' in df.columns else None,
+            growth_min=growth_min if '10 yr Avg. Annual Growth' in df.columns else None,
+            max_vacancy=max_vacancy if 'Vacancy Rate' in df.columns else None,
+            min_population=min_population if 'Population' in df.columns else None
+        )
+
+        st.session_state.filtered_suburbs = filtered_df
+        st.success(f"✅ Filtered to {len(filtered_df)} suburbs from {len(df)} total")
+
+        # Display filtered results summary
+        if not filtered_df.empty:
+            col1, col2, col3, col4 = st.columns(4)
+
+            with col1:
+                if 'Median Price' in filtered_df.columns:
+                    avg_price = filtered_df['Median Price'].mean()
+                    st.metric("Avg Median Price", f"${avg_price:,.0f}")
+
+            with col2:
+                if 'Rental Yield on Houses' in filtered_df.columns:
+                    avg_yield = filtered_df['Rental Yield on Houses'].mean()
+                    st.metric("Avg Rental Yield", f"{avg_yield:.1f}%")
+
+            with col3:
+                if '10 yr Avg. Annual Growth' in filtered_df.columns:
+                    avg_growth = filtered_df['10 yr Avg. Annual Growth'].mean()
+                    st.metric("Avg Growth Rate", f"{avg_growth:.1f}%")
+
+            with col4:
+                if 'Distance (km) to CBD' in filtered_df.columns:
+                    avg_distance = filtered_df['Distance (km) to CBD'].mean()
+                    st.metric("Avg Distance CBD", f"{avg_distance:.0f} km")
+
+def apply_filters(df, price_range=None, min_yield=None, selected_states=None,
+                 max_distance=None, growth_min=None, max_vacancy=None, min_population=None):
+    """Apply filtering criteria to suburb data"""
+
+    filtered_df = df.copy()
+
+    # Price filter
+    if price_range and 'Median Price' in df.columns:
+        filtered_df = filtered_df[
+            (filtered_df['Median Price'] >= price_range[0]) &
+            (filtered_df['Median Price'] <= price_range[1])
+        ]
+
+    # Yield filter
+    if min_yield and 'Rental Yield on Houses' in df.columns:
+        filtered_df = filtered_df[filtered_df['Rental Yield on Houses'] >= min_yield]
+
+    # State filter
+    if selected_states and 'State' in df.columns:
+        filtered_df = filtered_df[filtered_df['State'].isin(selected_states)]
+
+    # Distance filter
+    if max_distance and 'Distance (km) to CBD' in df.columns:
+        filtered_df = filtered_df[filtered_df['Distance (km) to CBD'] <= max_distance]
+
+    # Growth filter
+    if growth_min and '10 yr Avg. Annual Growth' in df.columns:
+        filtered_df = filtered_df[filtered_df['10 yr Avg. Annual Growth'] >= growth_min]
+
+    # Vacancy filter
+    if max_vacancy and 'Vacancy Rate' in df.columns:
+        filtered_df = filtered_df[filtered_df['Vacancy Rate'] <= max_vacancy]
+
+    # Population filter
+    if min_population and 'Population' in df.columns:
+        filtered_df = filtered_df[filtered_df['Population'] >= min_population]
+
+    return filtered_df
+
+def display_customer_summary(customer_profile):
+    """Display a concise customer profile summary"""
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        # Financial summary
+        financial = customer_profile.get('financial_profile', {})
+        st.write(f"**Income:** {financial.get('annual_income', 'N/A')}")
+        st.write(f"**Equity:** {financial.get('available_equity', 'N/A')}")
+
+        # Investment goals
+        goals = customer_profile.get('investment_goals', {})
+        st.write(f"**Purpose:** {goals.get('primary_purpose', 'N/A')}")
+        st.write(f"**Target Yield:** {goals.get('target_yield', 'N/A')}")
+
+    with col2:
+        # Preferences
+        prefs = customer_profile.get('property_preferences', {})
+        price_range = prefs.get('price_range', {})
+        st.write(f"**Budget:** ${price_range.get('min', 'N/A')} - ${price_range.get('max', 'N/A')}")
+
+        lifestyle = customer_profile.get('lifestyle_factors', {})
+        st.write(f"**CBD Proximity:** {lifestyle.get('proximity_to_cbd', 'N/A')}")
+        st.write(f"**School Quality:** {lifestyle.get('school_quality', 'N/A')}")
+
+def render_ml_training_stage(df, customer_profile):
+    """Render ML model training stage and return ML results"""
+
+    st.markdown("### Machine Learning Feature Analysis")
+
+    st.info("""
+    Train ML models to analyze feature importance and generate intelligent property scores based on:
+    - Customer profile and preferences
+    - Historical market performance
+    - Suburb characteristics and trends
+    """)
+
+    # Use filtered data if available, otherwise use full dataset
+    working_df = st.session_state.get('filtered_suburbs', df)
 
     col1, col2 = st.columns([2, 1])
 
     with col1:
-        st.markdown("#### Recommendation Settings")
+        st.markdown("#### Model Configuration")
 
-        # Number of recommendations - made more prominent
-        st.markdown("#### 🎯 Configuration")
-        num_recommendations = st.slider(
-            "**Number of Suburbs to Recommend**",
-            min_value=5, max_value=20, value=10, step=1,
-            help="Select how many suburbs you want in your recommendations (5-20)"
-        )
-        st.caption(f"✅ Will generate {num_recommendations} suburb recommendations")
+        # Model parameters
+        with st.expander("⚙️ Advanced Settings"):
+            n_estimators = st.slider("Number of Trees", 50, 200, 100, step=10)
+            max_depth = st.slider("Maximum Depth", 5, 20, 10, step=1)
+            test_size = st.slider("Test Split", 0.1, 0.3, 0.2, step=0.05)
 
-        # Recommendation approach
-        approach = st.selectbox(
-            "Recommendation Approach",
-            ["Balanced", "Growth Focused", "Yield Focused", "Conservative"]
-        )
-
-        # Generate button
-        if st.button("🚀 Generate Recommendations", type="primary", use_container_width=True):
-            generate_recommendations(df, customer_profile, num_recommendations, approach)
+        # Training button
+        if st.button("🚀 Train ML Models", type="primary", use_container_width=True):
+            ml_results = train_ml_models(working_df, customer_profile)
+            return ml_results
 
     with col2:
-        # Prominent info box about suburb count
-        st.success(f"""
-        🎯 **Generating {num_recommendations} Suburb Recommendations**
-
-        The AI system will analyze your customer profile and market data to identify the top {num_recommendations} suburbs that best match the investment criteria.
-
-        **Recommendation Sizing:**
-        - **5-8 suburbs:** Quick focused analysis
-        - **10-12 suburbs:** Balanced selection (recommended)
-        - **15-20 suburbs:** Comprehensive market coverage
-        """)
-
-        st.markdown("#### Approach Details")
-
-        approach_details = {
-            "Balanced": "Equal weight to yield and growth potential. Best for diversified investors seeking stable returns with moderate growth.",
-            "Growth Focused": "Prioritizes capital growth opportunities. Suitable for long-term investors willing to accept lower initial yields for higher appreciation.",
-            "Yield Focused": "Emphasizes high rental returns. Ideal for investors seeking immediate cash flow and steady income streams.",
-            "Conservative": "Lower risk, stable investment options. Perfect for risk-averse investors prioritizing capital preservation."
-        }
-
-        selected_approach = approach_details.get(approach, "")
-        st.info(f"**{approach}:** {selected_approach}")
-
-        st.markdown("#### AI Analysis")
+        st.markdown("#### Model Features")
         st.write("""
-        🤖 **AI Features:**
-        - Customer profile analysis
-        - Market trend evaluation
+        **Input Features:**
+        - Price metrics
+        - Rental yields
+        - Growth rates
+        - Location factors
+        - Customer preferences
+
+        **Output Predictions:**
+        - Investment attractiveness
+        - Feature importance
         - Risk assessment
-        - Investment strategy alignment
         """)
 
-def generate_recommendations(df, customer_profile, num_recommendations, approach):
-    """Generate recommendations using AI as primary engine"""
+    # Check if ML results already exist in session
+    if st.session_state.get('ml_results'):
+        st.success("✅ ML models already trained!")
+        return st.session_state.ml_results
+
+    return None
+
+def train_ml_models(df, customer_profile):
+    """Train machine learning models and return results"""
+
+    with st.spinner("🔄 Training ML models..."):
+        try:
+            # Initialize recommender
+            recommender = PropertyRecommendationEngine()
+
+            # Train models
+            success = recommender.train_models(df, customer_profile)
+
+            if success:
+                # Store trained model in session state
+                st.session_state.ml_recommender = recommender
+
+                st.success("✅ ML models trained successfully!")
+
+                # Get feature importance
+                feature_importance = recommender.get_feature_importance()
+
+                # Prepare ML results
+                ml_results = {
+                    'success': True,
+                    'feature_importance': feature_importance,
+                    'recommender': recommender
+                }
+
+                # Store in session state
+                st.session_state.ml_results = ml_results
+
+                # Show feature importance
+                if feature_importance:
+                    st.subheader("📊 Feature Importance")
+
+                    importance_df = pd.DataFrame([
+                        {'Feature': k, 'Importance': v}
+                        for k, v in list(feature_importance.items())[:10]
+                    ])
+
+                    fig = px.bar(importance_df, x='Importance', y='Feature',
+                               orientation='h', title="Top 10 Most Important Features")
+                    st.plotly_chart(fig, use_container_width=True)
+
+                st.balloons()
+
+                return ml_results
+            else:
+                st.error("❌ Failed to train ML models. Please check your data.")
+                return None
+
+        except Exception as e:
+            st.error(f"Error training models: {str(e)}")
+            import traceback
+            st.code(traceback.format_exc())
+            return None
+
+def render_ai_recommendations_stage(df, customer_profile, ml_results):
+    """Render AI-enhanced recommendations stage with ML insights"""
+
+    st.markdown("### AI-Enhanced Recommendations")
+
+    st.info("""
+    Generate AI recommendations enhanced with ML feature importance insights.
+    The AI will consider both market data and ML-identified key factors.
+    """)
+
+    # Use filtered data if available, otherwise use full dataset
+    working_df = st.session_state.get('filtered_suburbs', df)
+
+    col1, col2 = st.columns([1, 1])
+
+    with col1:
+        # Number of recommendations
+        num_recommendations = st.slider(
+            "Number of Recommendations",
+            min_value=5,
+            max_value=20,
+            value=10,
+            step=1,
+            help="How many suburb recommendations to generate"
+        )
+
+    with col2:
+        # Investment approach
+        approach = st.selectbox(
+            "Investment Approach",
+            ["Balanced", "Growth Focused", "Yield Focused", "Conservative"],
+            help="Select the investment strategy that aligns with your goals"
+        )
+
+    # Display approach details
+    st.markdown("#### Approach Details")
+
+    approach_details = {
+        "Balanced": "Equal weight to yield and growth potential. Best for diversified investors seeking stable returns with moderate growth.",
+        "Growth Focused": "Prioritizes capital growth opportunities. Suitable for long-term investors willing to accept lower initial yields for higher appreciation.",
+        "Yield Focused": "Emphasizes high rental returns. Ideal for investors seeking immediate cash flow and steady income streams.",
+        "Conservative": "Lower risk, stable investment options. Perfect for risk-averse investors prioritizing capital preservation."
+    }
+
+    selected_approach = approach_details.get(approach, "")
+    st.info(f"**{approach}:** {selected_approach}")
+
+    # ML insights display
+    if ml_results and ml_results.get('feature_importance'):
+        with st.expander("🤖 ML Feature Importance Insights", expanded=False):
+            st.write("The AI will incorporate these key factors identified by ML:")
+            feature_importance = ml_results['feature_importance']
+            top_features = list(feature_importance.items())[:5]
+            for feature, importance in top_features:
+                st.write(f"- **{feature}**: {importance:.3f}")
+
+    # Generate button
+    if st.button("⭐ Generate AI Recommendations", type="primary", use_container_width=True):
+        generate_recommendations(working_df, customer_profile, num_recommendations, approach, ml_results)
+
+def generate_recommendations(df, customer_profile, num_recommendations, approach, ml_results=None):
+    """Generate recommendations using AI as primary engine, enhanced with ML insights"""
 
     with st.spinner("🔄 Generating AI recommendations..."):
         try:
@@ -143,7 +529,7 @@ def generate_recommendations(df, customer_profile, num_recommendations, approach
 
             recommendations_data = {}
 
-            # Method 1: AI-based recommendations (PRIMARY)
+            # Method 1: AI-based recommendations (PRIMARY) - Enhanced with ML insights
             status_text.text("🧠 Generating AI recommendations...")
             progress_bar.progress(30)
             status_text.text("🧠 Generating AI analysis...")
@@ -159,9 +545,20 @@ def generate_recommendations(df, customer_profile, num_recommendations, approach
                 openai_service = OpenAIService()
                 st.success("✅ AI service initialized successfully")
 
-                st.info("🧠 **Generating AI recommendations...**")
+                # Build enhanced prompt context with ML insights
+                ml_context = ""
+                if ml_results and ml_results.get('feature_importance'):
+                    st.info("🤖 **Incorporating ML feature importance insights...**")
+                    feature_importance = ml_results['feature_importance']
+                    top_features = list(feature_importance.items())[:5]
+                    ml_context = "\n\nML Analysis Insights - Key Investment Factors:\n"
+                    for feature, importance in top_features:
+                        ml_context += f"- {feature}: {importance:.3f} importance\n"
+                    ml_context += "\nPlease consider these ML-identified factors in your recommendations.\n"
+
+                st.info("🧠 **Generating ML-enhanced AI recommendations...**")
                 ai_recommendations = openai_service.generate_suburb_recommendations(
-                    customer_profile, df, num_recommendations, approach
+                    customer_profile, df, num_recommendations, approach, ml_context=ml_context
                 )
                 recommendations_data['ai_analysis'] = ai_recommendations
                 st.success("✅ AI analysis completed")

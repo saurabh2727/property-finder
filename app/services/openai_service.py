@@ -131,8 +131,8 @@ class OpenAIService:
             st.code(traceback.format_exc())
             return self._create_empty_profile()
 
-    def generate_suburb_recommendations(self, customer_profile: Dict[str, Any], suburb_data: Any, num_recommendations: int = 10, approach: str = "Balanced") -> Dict[str, Any]:
-        """Generate suburb recommendations based on customer profile and available data"""
+    def generate_suburb_recommendations(self, customer_profile: Dict[str, Any], suburb_data: Any, num_recommendations: int = 10, approach: str = "Balanced", ml_context: str = "") -> Dict[str, Any]:
+        """Generate suburb recommendations based on customer profile and available data, enhanced with ML insights"""
 
         # Convert suburb data to string representation for analysis
         suburb_summary = self._summarize_suburb_data(suburb_data)
@@ -156,6 +156,7 @@ class OpenAIService:
 
         Available Suburb Data Summary:
         {suburb_summary}
+        {ml_context}
 
         Please provide exactly {num_recommendations} recommendations in the following JSON format, ranked by suitability score:
         {{
