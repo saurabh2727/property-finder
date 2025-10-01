@@ -27,19 +27,23 @@
 
 ---
 
-### Mode 2: Per-User Keys (Recommended for Multiple Users)
+### Mode 2: Per-User Keys with Browser Storage (Recommended for Multiple Users)
 
 **Use Case:** Multiple users, each with their own OpenAI API key
 
 **Setup:**
 - **Don't configure** `OPENAI_API_KEY` in secrets
 - Each user enters their own key in the sidebar
-- Key persists for their browser session
+- Click "💾 Save to Browser" to cache the key in browser localStorage
+- Key automatically loads on future visits!
 
 **Benefits:**
 - ✅ Each user controls their own costs
 - ✅ Separate usage tracking per user
-- ⚠️ Users need to re-enter key if browser tab is closed
+- ✅ **Browser caching** - key saved in localStorage
+- ✅ **Auto-load** - key retrieves automatically on page load
+- ✅ **Persistent** - works even after closing browser/tab
+- 🔒 Secure - key only accessible in user's browser
 
 ---
 
