@@ -29,12 +29,27 @@ def render_agent_review_page():
 
     # Check prerequisites and attempt recovery
     recommendations = st.session_state.get('recommendations')
-    if not recommendations:
+
+    # Check if recommendations is None, empty dict, or doesn't have required data
+    has_recommendations = (
+        recommendations is not None and
+        isinstance(recommendations, dict) and
+        len(recommendations) > 0 and
+        any(key in recommendations for key in ['primary_recommendations', 'ml_recommendations', 'rule_based', 'ai_recommendations'])
+    )
+
+    if not has_recommendations:
         # Try to recover session data
         if recover_session_data():
             recommendations = st.session_state.get('recommendations')
+            has_recommendations = (
+                recommendations is not None and
+                isinstance(recommendations, dict) and
+                len(recommendations) > 0 and
+                any(key in recommendations for key in ['primary_recommendations', 'ml_recommendations', 'rule_based', 'ai_recommendations'])
+            )
 
-    if not recommendations:
+    if not has_recommendations:
         st.warning("⚠️ No recommendations available. Please complete the analysis workflow first.")
 
         # Show session status for debugging

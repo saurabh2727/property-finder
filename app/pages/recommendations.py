@@ -449,8 +449,6 @@ def display_existing_recommendations():
 def display_top_recommendations(recommendations):
     """Display top suburb recommendations"""
 
-    st.subheader("🏆 Recommended Suburbs")
-
     # Summary insights - prioritize AI recommendations
     ai_recs = recommendations.get('primary_recommendations')
     ml_recs = recommendations.get('ml_recommendations')
@@ -515,154 +513,152 @@ def display_top_recommendations(recommendations):
         return
 
     # Display top 3 suburbs as featured cards
-    st.markdown("### 🏆 Top 3 Picks")
+    with st.expander("🏆 Top 3 Picks", expanded=True):
+        top_3 = top_suburbs.head(3)
+        cols = st.columns(3)
 
-    top_3 = top_suburbs.head(3)
-    cols = st.columns(3)
+        for idx, ((_, suburb), col) in enumerate(zip(top_3.iterrows(), cols), 1):
+            suburb_name = suburb.get('Suburb Name', suburb.get('Suburb', 'Unknown'))
+            state = suburb.get('State', '')
 
-    for idx, ((_, suburb), col) in enumerate(zip(top_3.iterrows(), cols), 1):
-        suburb_name = suburb.get('Suburb Name', suburb.get('Suburb', 'Unknown'))
-        state = suburb.get('State', '')
+            # Calculate investment score (normalize from different sources)
+            investment_score = None
+            if 'AI_Score' in suburb:
+                investment_score = suburb['AI_Score'] / 10  # AI scores are 0-100, normalize to 0-10
+            elif 'Investment_Score_Predicted' in suburb:
+                investment_score = suburb['Investment_Score_Predicted'] * 10  # Predicted is 0-1
+            elif 'Composite_Score' in suburb:
+                investment_score = suburb['Composite_Score'] * 10  # Composite is 0-1
 
-        # Calculate investment score (normalize from different sources)
-        investment_score = None
-        if 'AI_Score' in suburb:
-            investment_score = suburb['AI_Score'] / 10  # AI scores are 0-100, normalize to 0-10
-        elif 'Investment_Score_Predicted' in suburb:
-            investment_score = suburb['Investment_Score_Predicted'] * 10  # Predicted is 0-1
-        elif 'Composite_Score' in suburb:
-            investment_score = suburb['Composite_Score'] * 10  # Composite is 0-1
+            features = {}
+            if 'School Rating' in suburb:
+                features['school_rating'] = suburb['School Rating']
+            if 'Public Transport Score' in suburb:
+                features['transport_score'] = suburb['Public Transport Score']
+            if 'Vacancy Rate' in suburb:
+                features['vacancy_rate'] = suburb['Vacancy Rate']
 
-        features = {}
-        if 'School Rating' in suburb:
-            features['school_rating'] = suburb['School Rating']
-        if 'Public Transport Score' in suburb:
-            features['transport_score'] = suburb['Public Transport Score']
-        if 'Vacancy Rate' in suburb:
-            features['vacancy_rate'] = suburb['Vacancy Rate']
-
-        with col:
-            render_property_card(
-                suburb_name=suburb_name,
-                state=state,
-                median_price=suburb.get('Median Price', 0),
-                rental_yield=suburb.get('Rental Yield on Houses', 0),
-                investment_score=investment_score,
-                growth_rate=suburb.get('10 yr Avg. Annual Growth'),
-                distance_cbd=suburb.get('Distance (km) to CBD', suburb.get('Distance from CBD (km)')),
-                features=features if features else None,
-                rank=idx,
-                show_image=True
-            )
+            with col:
+                render_property_card(
+                    suburb_name=suburb_name,
+                    state=state,
+                    median_price=suburb.get('Median Price', 0),
+                    rental_yield=suburb.get('Rental Yield on Houses', 0),
+                    investment_score=investment_score,
+                    growth_rate=suburb.get('10 yr Avg. Annual Growth'),
+                    distance_cbd=suburb.get('Distance (km) to CBD', suburb.get('Distance from CBD (km)')),
+                    features=features if features else None,
+                    rank=idx,
+                    show_image=True
+                )
 
     st.markdown("---")
-    st.markdown("### 📋 All Recommendations")
+    with st.expander("📋 All Recommendations", expanded=True):
+        # Display remaining suburbs with enhanced information
+        for idx, (_, suburb) in enumerate(top_suburbs.head(10).iterrows(), 1):
+            # Handle both 'Suburb' and 'Suburb Name' columns
+            suburb_name = suburb.get('Suburb Name', suburb.get('Suburb', 'Unknown'))
+            state = suburb.get('State', '')
 
-    # Display remaining suburbs with enhanced information
-    for idx, (_, suburb) in enumerate(top_suburbs.head(10).iterrows(), 1):
-        # Handle both 'Suburb' and 'Suburb Name' columns
-        suburb_name = suburb.get('Suburb Name', suburb.get('Suburb', 'Unknown'))
-        state = suburb.get('State', '')
+            # Create a score indicator
+            score_indicator = ""
+            if 'AI_Score' in suburb:
+                score = suburb['AI_Score'] / 100  # AI scores are 0-100, normalize to 0-1
+                if score > 0.85:
+                    score_indicator = "🌟"
+                elif score > 0.75:
+                    score_indicator = "⭐"
+                else:
+                    score_indicator = "🤖"
+            elif 'Investment_Score_Predicted' in suburb:
+                score = suburb['Investment_Score_Predicted']
+                if score > 0.7:
+                    score_indicator = "🌟"
+                elif score > 0.5:
+                    score_indicator = "⭐"
+                else:
+                    score_indicator = "📊"
+            elif 'Composite_Score' in suburb:
+                score = suburb['Composite_Score']
+                if score > 0.7:
+                    score_indicator = "🏆"
+                elif score > 0.5:
+                    score_indicator = "🥈"
+                else:
+                    score_indicator = "🥉"
 
-        # Create a score indicator
-        score_indicator = ""
-        if 'AI_Score' in suburb:
-            score = suburb['AI_Score'] / 100  # AI scores are 0-100, normalize to 0-1
-            if score > 0.85:
-                score_indicator = "🌟"
-            elif score > 0.75:
-                score_indicator = "⭐"
-            else:
-                score_indicator = "🤖"
-        elif 'Investment_Score_Predicted' in suburb:
-            score = suburb['Investment_Score_Predicted']
-            if score > 0.7:
-                score_indicator = "🌟"
-            elif score > 0.5:
-                score_indicator = "⭐"
-            else:
-                score_indicator = "📊"
-        elif 'Composite_Score' in suburb:
-            score = suburb['Composite_Score']
-            if score > 0.7:
-                score_indicator = "🏆"
-            elif score > 0.5:
-                score_indicator = "🥈"
-            else:
-                score_indicator = "🥉"
+            with st.expander(f"{idx}. {score_indicator} {suburb_name}, {state}", expanded=False):
 
-        with st.expander(f"{idx}. {score_indicator} {suburb_name}, {state}", expanded=False):
+                col1, col2 = st.columns([2, 1])
 
-            col1, col2 = st.columns([2, 1])
+                with col1:
+                    # Key metrics
+                    st.markdown("#### 📊 Key Metrics")
 
-            with col1:
-                # Key metrics
-                st.markdown("#### 📊 Key Metrics")
+                    metric_col1, metric_col2 = st.columns(2)
 
-                metric_col1, metric_col2 = st.columns(2)
+                    with metric_col1:
+                        if 'Median Price' in suburb:
+                            st.metric("Median Price", f"${suburb['Median Price']:,.0f}")
+                        if 'Rental Yield on Houses' in suburb:
+                            st.metric("Rental Yield", f"{suburb['Rental Yield on Houses']:.1f}%")
 
-                with metric_col1:
-                    if 'Median Price' in suburb:
-                        st.metric("Median Price", f"${suburb['Median Price']:,.0f}")
-                    if 'Rental Yield on Houses' in suburb:
-                        st.metric("Rental Yield", f"{suburb['Rental Yield on Houses']:.1f}%")
+                    with metric_col2:
+                        if '10 yr Avg. Annual Growth' in suburb:
+                            st.metric("10yr Growth", f"{suburb['10 yr Avg. Annual Growth']:.1f}%")
+                        if 'Distance (km) to CBD' in suburb:
+                            st.metric("Distance to CBD", f"{suburb['Distance (km) to CBD']:.0f} km")
 
-                with metric_col2:
-                    if '10 yr Avg. Annual Growth' in suburb:
-                        st.metric("10yr Growth", f"{suburb['10 yr Avg. Annual Growth']:.1f}%")
-                    if 'Distance (km) to CBD' in suburb:
-                        st.metric("Distance to CBD", f"{suburb['Distance (km) to CBD']:.0f} km")
+                    # Investment potential
+                    if 'AI_Score' in suburb:
+                        score = suburb['AI_Score']
+                        # Normalize score to 0-1 range for progress bar (AI scores are 0-100)
+                        normalized_score = max(0.0, min(1.0, score / 100))
+                        st.progress(normalized_score)
+                        st.caption(f"🤖 AI Investment Score: {score:.0f}/100")
 
-                # Investment potential
-                if 'AI_Score' in suburb:
-                    score = suburb['AI_Score']
-                    # Normalize score to 0-1 range for progress bar (AI scores are 0-100)
-                    normalized_score = max(0.0, min(1.0, score / 100))
-                    st.progress(normalized_score)
-                    st.caption(f"🤖 AI Investment Score: {score:.0f}/100")
+                        # Show AI reasoning
+                        if 'AI_Reasons' in suburb and suburb['AI_Reasons']:
+                            with st.expander("🤖 AI Reasoning"):
+                                reasons = suburb['AI_Reasons'].split('; ')
+                                for reason in reasons:
+                                    st.write(f"• {reason}")
 
-                    # Show AI reasoning
-                    if 'AI_Reasons' in suburb and suburb['AI_Reasons']:
-                        with st.expander("🤖 AI Reasoning"):
-                            reasons = suburb['AI_Reasons'].split('; ')
-                            for reason in reasons:
-                                st.write(f"• {reason}")
+                    elif 'Investment_Score_Predicted' in suburb:
+                        score = suburb['Investment_Score_Predicted']
+                        # Normalize score to 0-1 range for progress bar
+                        normalized_score = max(0.0, min(1.0, score))
+                        st.progress(normalized_score)
+                        st.caption(f"ML Investment Score: {score:.2f}")
 
-                elif 'Investment_Score_Predicted' in suburb:
-                    score = suburb['Investment_Score_Predicted']
-                    # Normalize score to 0-1 range for progress bar
-                    normalized_score = max(0.0, min(1.0, score))
-                    st.progress(normalized_score)
-                    st.caption(f"ML Investment Score: {score:.2f}")
+                with col2:
+                    # Cash flow projection
+                    st.markdown("#### 💰 Cash Flow Projection")
 
-            with col2:
-                # Cash flow projection
-                st.markdown("#### 💰 Cash Flow Projection")
+                    if 'Median Price' in suburb and 'Rental Yield on Houses' in suburb:
+                        price = suburb['Median Price']
+                        yield_rate = suburb['Rental Yield on Houses'] / 100
 
-                if 'Median Price' in suburb and 'Rental Yield on Houses' in suburb:
-                    price = suburb['Median Price']
-                    yield_rate = suburb['Rental Yield on Houses'] / 100
+                        # Simple cash flow calculation
+                        annual_rent = price * yield_rate
+                        monthly_rent = annual_rent / 12
 
-                    # Simple cash flow calculation
-                    annual_rent = price * yield_rate
-                    monthly_rent = annual_rent / 12
+                        # Approximate expenses (30% of rent)
+                        net_monthly = monthly_rent * 0.7
 
-                    # Approximate expenses (30% of rent)
-                    net_monthly = monthly_rent * 0.7
+                        st.write(f"**Gross Rent:** ${monthly_rent:,.0f}/month")
+                        st.write(f"**Net Cash Flow:** ${net_monthly:,.0f}/month")
 
-                    st.write(f"**Gross Rent:** ${monthly_rent:,.0f}/month")
-                    st.write(f"**Net Cash Flow:** ${net_monthly:,.0f}/month")
+                        # ROI calculation
+                        deposit_20 = price * 0.2
+                        annual_net = net_monthly * 12
+                        roi = (annual_net / deposit_20) * 100 if deposit_20 > 0 else 0
 
-                    # ROI calculation
-                    deposit_20 = price * 0.2
-                    annual_net = net_monthly * 12
-                    roi = (annual_net / deposit_20) * 100 if deposit_20 > 0 else 0
-
-                    st.metric("Estimated ROI", f"{roi:.1f}%")
+                        st.metric("Estimated ROI", f"{roi:.1f}%")
 
     # Comparison chart
-    st.subheader("📈 Recommendation Comparison")
-    create_comparison_chart(top_suburbs.head(5))
+    with st.expander("📈 Recommendation Comparison", expanded=False):
+        create_comparison_chart(top_suburbs.head(5))
 
 def create_comparison_chart(top_suburbs):
     """Create comparison chart for top recommendations"""
@@ -713,8 +709,6 @@ def create_comparison_chart(top_suburbs):
 def display_ai_analysis(recommendations):
     """Display AI-generated analysis"""
 
-    st.subheader("🤖 AI Investment Analysis")
-
     ai_analysis = recommendations.get('ai_analysis', {})
 
     if not ai_analysis:
@@ -722,50 +716,47 @@ def display_ai_analysis(recommendations):
         return
 
     # Investment strategy
-    strategy = ai_analysis.get('investment_strategy', 'N/A')
-    st.markdown(f"#### 🎯 Recommended Investment Strategy")
-    st.info(strategy)
+    with st.expander("🎯 Recommended Investment Strategy", expanded=True):
+        strategy = ai_analysis.get('investment_strategy', 'N/A')
+        st.info(strategy)
 
     # Risk assessment
-    risk_assessment = ai_analysis.get('risk_assessment', 'N/A')
-    st.markdown(f"#### ⚠️ Risk Assessment")
-    st.warning(risk_assessment)
+    with st.expander("⚠️ Risk Assessment", expanded=True):
+        risk_assessment = ai_analysis.get('risk_assessment', 'N/A')
+        st.warning(risk_assessment)
 
     # AI recommended suburbs
     ai_suburbs = ai_analysis.get('recommended_suburbs', [])
     if ai_suburbs:
-        st.markdown("#### 🏘️ AI Top Picks")
+        with st.expander("🏘️ AI Top Picks", expanded=True):
+            for idx, suburb_info in enumerate(ai_suburbs[:5], 1):
+                with st.expander(f"{idx}. {suburb_info.get('suburb_name', 'Unknown')}"):
+                    col1, col2 = st.columns(2)
 
-        for idx, suburb_info in enumerate(ai_suburbs[:5], 1):
-            with st.expander(f"{idx}. {suburb_info.get('suburb_name', 'Unknown')}"):
-                col1, col2 = st.columns(2)
+                    with col1:
+                        st.write(f"**Score:** {suburb_info.get('score', 'N/A')}")
+                        st.write(f"**Investment Potential:** {suburb_info.get('investment_potential', 'N/A')}")
 
-                with col1:
-                    st.write(f"**Score:** {suburb_info.get('score', 'N/A')}")
-                    st.write(f"**Investment Potential:** {suburb_info.get('investment_potential', 'N/A')}")
+                    with col2:
+                        key_metrics = suburb_info.get('key_metrics', {})
+                        for metric, value in key_metrics.items():
+                            st.write(f"**{metric.replace('_', ' ').title()}:** {value}")
 
-                with col2:
-                    key_metrics = suburb_info.get('key_metrics', {})
-                    for metric, value in key_metrics.items():
-                        st.write(f"**{metric.replace('_', ' ').title()}:** {value}")
-
-                reasons = suburb_info.get('reasons', [])
-                if reasons:
-                    st.markdown("**Why this suburb:**")
-                    for reason in reasons:
-                        st.write(f"• {reason}")
+                    reasons = suburb_info.get('reasons', [])
+                    if reasons:
+                        st.markdown("**Why this suburb:**")
+                        for reason in reasons:
+                            st.write(f"• {reason}")
 
     # Next steps
     next_steps = ai_analysis.get('next_steps', [])
     if next_steps:
-        st.markdown("#### 📋 Next Steps")
-        for step in next_steps:
-            st.write(f"• {step}")
+        with st.expander("📋 Next Steps", expanded=True):
+            for step in next_steps:
+                st.write(f"• {step}")
 
 def display_detailed_insights(recommendations):
     """Display detailed insights and analytics"""
-
-    st.subheader("📊 Detailed Investment Insights")
 
     # Get recommendations data with support for new structure
     primary_recs = recommendations.get('primary_recommendations')

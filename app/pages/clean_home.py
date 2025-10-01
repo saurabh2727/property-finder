@@ -39,42 +39,60 @@ def render_clean_home_page():
 
     with col1:
         st.markdown(f"""
-        <div class="metric-card" style="text-align: center; height: 280px;">
-            <div style="font-size: 3rem; margin-bottom: 1rem;">👤</div>
-            <h3 style="color: {COLORS['dark_navy']}; margin-bottom: 1rem;">Customer Profiling</h3>
-            <p style="color: {COLORS['slate_gray']}; line-height: 1.6; font-size: 0.9rem;">
-                Automated analysis of client requirements and investment goals from uploaded documents or manual entry.
-            </p>
-            <div style="margin-top: 1.5rem;">
-                <span class="badge badge-success">AI-Powered</span>
+        <div class="property-card" style="overflow: hidden; height: 400px;">
+            <img src="https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=800&h=300&fit=crop"
+                 style="width: 100%; height: 160px; object-fit: cover;"
+                 alt="Customer Profiling">
+            <div style="padding: 1.5rem; text-align: center;">
+                <h3 style="color: {COLORS['dark_navy']}; margin-bottom: 1rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                    👤 Customer Profiling
+                </h3>
+                <p style="color: {COLORS['slate_gray']}; line-height: 1.6; font-size: 0.9rem; text-align: center;">
+                    Automated analysis of client requirements and investment goals from uploaded documents or manual entry.
+                </p>
+                <div style="margin-top: 1.5rem;">
+                    <span class="badge badge-success">AI-Powered</span>
+                </div>
             </div>
         </div>
         """, unsafe_allow_html=True)
 
     with col2:
         st.markdown(f"""
-        <div class="metric-card" style="text-align: center; height: 280px;">
-            <div style="font-size: 3rem; margin-bottom: 1rem;">📊</div>
-            <h3 style="color: {COLORS['dark_navy']}; margin-bottom: 1rem;">Market Analysis</h3>
-            <p style="color: {COLORS['slate_gray']}; line-height: 1.6; font-size: 0.9rem;">
-                Advanced filtering and scoring of suburbs based on growth potential, rental yields, and risk factors.
-            </p>
-            <div style="margin-top: 1.5rem;">
-                <span class="badge badge-info">Data-Driven</span>
+        <div class="property-card" style="overflow: hidden; height: 400px;">
+            <img src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&h=300&fit=crop"
+                 style="width: 100%; height: 160px; object-fit: cover;"
+                 alt="Market Analysis">
+            <div style="padding: 1.5rem; text-align: center;">
+                <h3 style="color: {COLORS['dark_navy']}; margin-bottom: 1rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                    📊 Market Analysis
+                </h3>
+                <p style="color: {COLORS['slate_gray']}; line-height: 1.6; font-size: 0.9rem; text-align: center;">
+                    Advanced filtering and scoring of suburbs based on growth potential, rental yields, and risk factors.
+                </p>
+                <div style="margin-top: 1.5rem;">
+                    <span class="badge badge-info">Data-Driven</span>
+                </div>
             </div>
         </div>
         """, unsafe_allow_html=True)
 
     with col3:
         st.markdown(f"""
-        <div class="metric-card" style="text-align: center; height: 280px;">
-            <div style="font-size: 3rem; margin-bottom: 1rem;">📄</div>
-            <h3 style="color: {COLORS['dark_navy']}; margin-bottom: 1rem;">Investment Reports</h3>
-            <p style="color: {COLORS['slate_gray']}; line-height: 1.6; font-size: 0.9rem;">
-                Professional-grade reports with cash flow projections, suburb comparisons, and actionable recommendations.
-            </p>
-            <div style="margin-top: 1.5rem;">
-                <span class="badge badge-primary">Professional</span>
+        <div class="property-card" style="overflow: hidden; height: 400px;">
+            <img src="https://images.unsplash.com/photo-1554224154-26032ffc0d07?w=800&h=300&fit=crop"
+                 style="width: 100%; height: 160px; object-fit: cover;"
+                 alt="Investment Reports">
+            <div style="padding: 1.5rem; text-align: center;">
+                <h3 style="color: {COLORS['dark_navy']}; margin-bottom: 1rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                    📄 Investment Reports
+                </h3>
+                <p style="color: {COLORS['slate_gray']}; line-height: 1.6; font-size: 0.9rem; text-align: center;">
+                    Professional-grade reports with cash flow projections, suburb comparisons, and actionable recommendations.
+                </p>
+                <div style="margin-top: 1.5rem;">
+                    <span class="badge badge-primary">Professional</span>
+                </div>
             </div>
         </div>
         """, unsafe_allow_html=True)
