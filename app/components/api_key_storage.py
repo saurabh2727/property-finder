@@ -158,7 +158,58 @@ def render_api_key_input_with_storage():
     2. User mode: Each user provides their own key (persists in browser localStorage)
     """
 
-    st.markdown("**🔑 API Configuration**")
+    # Add custom CSS for better styling
+    st.markdown("""
+    <style>
+    .api-config-container {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 1.5rem;
+        border-radius: 12px;
+        margin-bottom: 1rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    .api-config-title {
+        color: white;
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        margin-top: 0.5rem;
+    }
+    .status-success {
+        background: #10b981;
+        color: white;
+    }
+    .status-warning {
+        background: #f59e0b;
+        color: white;
+    }
+    .status-info {
+        background: #3b82f6;
+        color: white;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # Header with gradient background
+    st.markdown("""
+    <div class="api-config-container">
+        <div class="api-config-title">
+            <span>🔑</span>
+            <span>API Configuration</span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
     # Try to load from Streamlit secrets first (admin key for shared use)
     admin_key_configured = False
@@ -172,20 +223,41 @@ def render_api_key_input_with_storage():
 
     # Mode 1: Admin key is configured (shared key for all users)
     if admin_key_configured:
-        st.success("✅ API Key configured (Shared)")
+        st.markdown("""
+        <div style="background: #d1fae5; border-left: 4px solid #10b981; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+            <div style="display: flex; align-items: center; gap: 0.5rem; color: #065f46; font-weight: 600;">
+                <span>✅</span>
+                <span>API Key Configured (Shared)</span>
+            </div>
+            <div style="color: #047857; font-size: 0.875rem; margin-top: 0.5rem;">
+                Ready to use • No setup required
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
-        with st.expander("ℹ️ About API Key"):
-            st.info("""
-            **Using Shared API Key**
-
-            An admin API key is configured for all users. This means:
-            - ✅ No need to enter your own key
-            - ✅ Starts working immediately
-            - ⚠️ Usage costs are shared across all users
-
-            If you prefer to use your own API key to track your own usage,
-            contact the admin to disable the shared key.
-            """)
+        with st.expander("ℹ️ About Shared API Key", expanded=False):
+            st.markdown("""
+            <div style="padding: 0.5rem;">
+                <h4 style="margin-top: 0; color: #374151;">Using Shared API Key</h4>
+                <p style="color: #6b7280; font-size: 0.9rem;">
+                    An admin API key is configured for all users.
+                </p>
+                <div style="margin: 1rem 0;">
+                    <div style="display: flex; align-items: start; gap: 0.5rem; margin-bottom: 0.5rem;">
+                        <span style="color: #10b981;">✓</span>
+                        <span style="color: #374151;">No need to enter your own key</span>
+                    </div>
+                    <div style="display: flex; align-items: start; gap: 0.5rem; margin-bottom: 0.5rem;">
+                        <span style="color: #10b981;">✓</span>
+                        <span style="color: #374151;">Starts working immediately</span>
+                    </div>
+                    <div style="display: flex; align-items: start; gap: 0.5rem;">
+                        <span style="color: #f59e0b;">⚠</span>
+                        <span style="color: #374151;">Usage costs are shared across all users</span>
+                    </div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
 
         return st.session_state.user_openai_api_key
 
@@ -203,28 +275,43 @@ def render_api_key_input_with_storage():
 
         # Try to auto-load from browser localStorage on first run
         if not st.session_state.api_key_load_attempted and not st.session_state.user_openai_api_key:
-            st.caption("🔍 Checking browser storage for saved API key...")
-            loaded_key = load_key_from_browser()
+            with st.spinner("🔍 Checking browser storage..."):
+                loaded_key = load_key_from_browser()
 
             if loaded_key and isinstance(loaded_key, str) and loaded_key.startswith('sk-'):
                 st.session_state.user_openai_api_key = loaded_key
                 st.session_state.api_key_save_requested = True
                 st.session_state.api_key_load_attempted = True
-                st.success("✅ Loaded your saved API key from browser!")
+                st.markdown("""
+                <div style="background: #d1fae5; border-left: 4px solid #10b981; padding: 0.75rem; border-radius: 8px; margin-bottom: 1rem;">
+                    <div style="color: #065f46; font-weight: 500; font-size: 0.9rem;">
+                        ✅ API key loaded from browser storage
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
                 st.rerun()
             else:
                 st.session_state.api_key_load_attempted = True
 
         current_key = st.session_state.user_openai_api_key
 
-        # Show input field
+        # Show input field with better label
+        st.markdown("""
+        <div style="margin-bottom: 0.5rem;">
+            <label style="font-size: 0.875rem; font-weight: 500; color: #374151;">
+                OpenAI API Key
+            </label>
+        </div>
+        """, unsafe_allow_html=True)
+
         api_key_input = st.text_input(
             "OpenAI API Key",
             type="password",
             value=current_key if current_key else "",
-            placeholder="sk-...",
-            help="Enter your OpenAI API key - it will be saved in your browser and persist across sessions",
-            key="api_key_input"
+            placeholder="sk-proj-...",
+            help="Your API key will be saved in browser localStorage",
+            key="api_key_input",
+            label_visibility="collapsed"
         )
 
         # Handle API key input
@@ -239,37 +326,65 @@ def render_api_key_input_with_storage():
             if 'api_key_tested' not in st.session_state:
                 st.session_state.api_key_tested = False
 
-            # Button row
-            col1, col2, col3 = st.columns([2, 2, 1])
+            # Status indicators
+            if st.session_state.api_key_tested or st.session_state.api_key_save_requested:
+                status_html = '<div style="display: flex; gap: 0.5rem; margin: 0.75rem 0; flex-wrap: wrap;">'
+
+                if st.session_state.api_key_tested:
+                    status_html += '''
+                    <div style="background: #d1fae5; color: #065f46; padding: 0.375rem 0.75rem; border-radius: 20px; font-size: 0.8rem; font-weight: 500; display: flex; align-items: center; gap: 0.25rem;">
+                        <span>✓</span>
+                        <span>API key is valid</span>
+                    </div>
+                    '''
+
+                if st.session_state.api_key_save_requested:
+                    status_html += '''
+                    <div style="background: #dbeafe; color: #1e40af; padding: 0.375rem 0.75rem; border-radius: 20px; font-size: 0.8rem; font-weight: 500; display: flex; align-items: center; gap: 0.25rem;">
+                        <span>✓</span>
+                        <span>Saved in browser</span>
+                    </div>
+                    '''
+
+                status_html += '</div>'
+                st.markdown(status_html, unsafe_allow_html=True)
+
+            # Action buttons with improved styling
+            st.markdown('<div style="margin-top: 1rem;"></div>', unsafe_allow_html=True)
+
+            col1, col2, col3 = st.columns([3, 3, 1])
 
             with col1:
-                # Test button
-                if st.button("🧪 Test API Key", use_container_width=True, help="Verify that your API key works"):
-                    with st.spinner("Testing API key..."):
+                # Test button with icon
+                test_button_label = "🧪 Test API Key" if not st.session_state.api_key_tested else "🧪 Test Again"
+                if st.button(test_button_label, use_container_width=True, help="Verify that your API key works", key="test_btn"):
+                    with st.spinner("🔄 Testing API key..."):
                         success, message = test_api_key(api_key_input)
                         if success:
                             st.session_state.api_key_tested = True
+                            st.balloons()
                             st.success(message)
                         else:
                             st.session_state.api_key_tested = False
                             st.error(message)
 
             with col2:
-                # Save button (only enabled after successful test)
+                # Save button
                 if not st.session_state.api_key_save_requested:
-                    button_disabled = False
-                    button_help = "Save API key in browser localStorage"
-
-                    if st.button("💾 Save to Browser", type="primary", use_container_width=True, help=button_help, disabled=button_disabled):
+                    if st.button("💾 Save to Browser", type="primary", use_container_width=True, help="Save API key in browser localStorage", key="save_btn"):
                         save_key_to_browser(api_key_input)
                         st.session_state.api_key_save_requested = True
-                        st.success("✅ API Key saved in your browser! It will persist even after closing the tab.")
+                        st.success("✅ Saved! Your key will auto-load next time.")
                         st.rerun()
                 else:
-                    st.success("✅ Saved in browser")
+                    st.markdown("""
+                    <div style="background: #dbeafe; border: 1px solid #60a5fa; color: #1e40af; padding: 0.5rem; border-radius: 6px; text-align: center; font-size: 0.875rem; font-weight: 500;">
+                        ✓ Saved
+                    </div>
+                    """, unsafe_allow_html=True)
 
             with col3:
-                if st.button("🗑️", help="Clear API key from browser"):
+                if st.button("🗑️", help="Clear API key from browser", use_container_width=True, key="clear_btn"):
                     clear_key_from_browser()
                     st.session_state.user_openai_api_key = None
                     st.session_state.api_key_save_requested = False
@@ -278,40 +393,79 @@ def render_api_key_input_with_storage():
                     st.rerun()
 
         else:
-            st.warning("⚠️ Please enter your OpenAI API key to continue")
-            st.caption("💡 Get your API key at [platform.openai.com/api-keys](https://platform.openai.com/api-keys)")
+            # No API key entered - show helpful prompt
+            st.markdown("""
+            <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
+                <div style="display: flex; align-items: center; gap: 0.5rem; color: #92400e; font-weight: 600; margin-bottom: 0.5rem;">
+                    <span>⚠️</span>
+                    <span>API Key Required</span>
+                </div>
+                <div style="color: #78350f; font-size: 0.875rem; line-height: 1.5;">
+                    Please enter your OpenAI API key above to continue.
+                    <br>
+                    <a href="https://platform.openai.com/api-keys" target="_blank" style="color: #b45309; text-decoration: underline;">
+                        Get your API key from OpenAI →
+                    </a>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
 
             # Manual reload button
-            if st.button("🔄 Reload from Browser Storage", help="Try to load previously saved API key"):
+            if st.button("🔄 Check Browser Storage", help="Try to load previously saved API key", use_container_width=True):
                 st.session_state.api_key_load_attempted = False
                 st.rerun()
 
-        # Help section
-        with st.expander("ℹ️ About API Keys & Browser Storage"):
+        # Help section with improved design
+        with st.expander("💡 How to Setup & Use", expanded=False):
             st.markdown("""
-            **How to use:**
-            1. Enter your OpenAI API key above
-            2. Click "🧪 Test API Key" to verify it works
-            3. Click "💾 Save to Browser" to store it locally
-            4. Your key will auto-load on future visits!
+            <div style="padding: 0.5rem;">
+                <h4 style="margin-top: 0; color: #374151; font-size: 1rem;">Quick Start Guide</h4>
 
-            **Personal API Key with Browser Storage**
+                <div style="background: #f3f4f6; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
+                    <div style="display: flex; gap: 1rem; margin-bottom: 0.75rem;">
+                        <div style="background: #667eea; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; flex-shrink: 0;">1</div>
+                        <div style="color: #374151;">
+                            <strong>Enter your API key</strong> in the field above
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 1rem; margin-bottom: 0.75rem;">
+                        <div style="background: #667eea; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; flex-shrink: 0;">2</div>
+                        <div style="color: #374151;">
+                            <strong>Test it</strong> by clicking "🧪 Test API Key"
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 1rem; margin-bottom: 0.75rem;">
+                        <div style="background: #667eea; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; flex-shrink: 0;">3</div>
+                        <div style="color: #374151;">
+                            <strong>Save it</strong> by clicking "💾 Save to Browser"
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 1rem;">
+                        <div style="background: #10b981; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; flex-shrink: 0;">✓</div>
+                        <div style="color: #374151;">
+                            <strong>Done!</strong> Your key will auto-load next time
+                        </div>
+                    </div>
+                </div>
 
-            - 🔐 Your API key is encrypted and stored in your browser's localStorage
-            - 💾 Persists across browser sessions - no need to re-enter!
-            - 🔒 Only accessible from this browser on this device
-            - 💰 You control your own OpenAI usage and costs
-            - 🌐 Each browser/device needs the key saved separately
-            - 🧪 Test feature validates your key before saving
+                <h4 style="color: #374151; font-size: 0.95rem; margin-top: 1.5rem;">Features</h4>
+                <div style="color: #6b7280; font-size: 0.875rem; line-height: 1.7;">
+                    ✓ <strong>Browser Storage:</strong> Key saved in localStorage<br>
+                    ✓ <strong>Auto-Load:</strong> No need to re-enter each visit<br>
+                    ✓ <strong>Validation:</strong> Test feature confirms key works<br>
+                    ✓ <strong>Secure:</strong> Only accessible from your browser<br>
+                    ✓ <strong>Private:</strong> You control your own costs<br>
+                </div>
 
-            **Security Note:**
-            - localStorage is browser-specific and reasonably secure
-            - For maximum security, use the admin-configured shared key mode
-            - Never share your API key with others
-
-            **To avoid manual entry entirely:**
-            The app admin can configure a shared API key in Streamlit secrets.
-            See `.streamlit/README.md` for instructions.
-            """)
+                <div style="background: #eff6ff; border-left: 3px solid #3b82f6; padding: 0.75rem; border-radius: 4px; margin-top: 1.5rem;">
+                    <div style="color: #1e40af; font-size: 0.85rem; font-weight: 500;">
+                        ℹ️ Admin Alternative
+                    </div>
+                    <div style="color: #1e3a8a; font-size: 0.8rem; margin-top: 0.25rem;">
+                        Admins can configure a shared API key in Streamlit secrets to skip manual entry.
+                    </div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
 
         return st.session_state.user_openai_api_key
