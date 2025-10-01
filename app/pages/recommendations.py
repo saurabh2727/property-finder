@@ -453,8 +453,6 @@ def train_ml_models(df, customer_profile):
                                orientation='h', title="Top 10 Most Important Features")
                     st.plotly_chart(fig, use_container_width=True)
 
-                st.balloons()
-
                 return ml_results
             else:
                 st.error("❌ Failed to train ML models. Please check your data.")
