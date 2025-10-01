@@ -118,19 +118,37 @@ def upload_new_data():
     st.markdown("---")
     st.markdown("### Alternative Data Sources")
 
-    col1, col2, col3 = st.columns(3)
+    # Check if converted data exists
+    from pathlib import Path
+    base_dir = Path(__file__).parent.parent.parent
+    converted_data_path = base_dir / "data" / "processed" / "htag_converted.csv"
+    has_converted_data = converted_data_path.exists()
 
-    with col1:
-        if st.button("🌐 Connect to API", use_container_width=True):
-            show_api_connection_form()
+    # Show buttons based on what's available
+    if has_converted_data:
+        col1, col2, col3 = st.columns(3)
 
-    with col2:
-        if st.button("✏️ Manual Entry", use_container_width=True):
-            show_manual_data_entry()
+        with col1:
+            if st.button("🌐 Connect to API", use_container_width=True):
+                show_api_connection_form()
 
-    with col3:
-        if st.button("⚡ Load Converted Data", use_container_width=True):
-            load_converted_data()
+        with col2:
+            if st.button("✏️ Manual Entry", use_container_width=True):
+                show_manual_data_entry()
+
+        with col3:
+            if st.button("⚡ Load Converted Data", use_container_width=True):
+                load_converted_data()
+    else:
+        col1, col2 = st.columns(2)
+
+        with col1:
+            if st.button("🌐 Connect to API", use_container_width=True):
+                show_api_connection_form()
+
+        with col2:
+            if st.button("✏️ Manual Entry", use_container_width=True):
+                show_manual_data_entry()
 
 def process_uploaded_data(uploaded_file):
     """Process and validate uploaded data file with automatic HtAG detection"""
