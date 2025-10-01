@@ -353,27 +353,65 @@ def load_sample_profile():
     """Load sample customer profile for testing"""
 
     try:
-        import os
-        from pathlib import Path
+        # Embedded sample profile data (no file read required for deployment)
+        sample_profile = {
+            "financial_profile": {
+                "annual_income": "$180,000",
+                "available_equity": "$350,000",
+                "loan_capacity": "$850,000",
+                "current_debt": "$420,000",
+                "cash_available": "$80,000"
+            },
+            "investment_goals": {
+                "primary_purpose": "Capital Growth and Rental Income",
+                "investment_timeline": "Long-term (10+ years)",
+                "target_yield": "4.5%",
+                "growth_expectation": "6-8%",
+                "risk_tolerance": "Medium to High"
+            },
+            "property_preferences": {
+                "preferred_suburbs": [
+                    "Parramatta",
+                    "Berwick",
+                    "Chatswood",
+                    "Castle Hill",
+                    "Epping",
+                    "Hornsby"
+                ],
+                "property_types": [
+                    "Unit/Apartment"
+                ],
+                "bedroom_range": "2-3",
+                "price_range": {
+                    "min": "650000",
+                    "max": "850000"
+                },
+                "special_features": [
+                    "Good transport access",
+                    "Parking space",
+                    "Close to shopping",
+                    "Pet-friendly"
+                ]
+            },
+            "lifestyle_factors": {
+                "proximity_to_cbd": "Medium",
+                "school_quality": "High",
+                "transport_access": "High",
+                "shopping_amenities": "Medium",
+                "future_development": "High"
+            },
+            "experience_level": "First-time investor",
+            "buying_readiness": "Ready to buy within 3 months",
+            "additional_notes": "Sarah and her spouse are financially stable first-time investors looking for a long-term capital growth investment property in Sydney's northwest/northern suburbs. They have done their homework, have finance ready, and are looking to purchase within 3 months. Their preference is for a modern 2-3 bedroom apartment under $850,000 with good transport links and future growth potential."
+        }
 
-        # Get the path to sample profile
-        base_dir = Path(__file__).parent.parent.parent
-        sample_profile_path = base_dir / "data" / "raw" / "sample_customer_profile.json"
+        # Store in session state with backup
+        save_customer_profile(sample_profile)
+        update_workflow_step(2)
 
-        if sample_profile_path.exists():
-            with open(sample_profile_path, 'r') as f:
-                sample_profile = json.load(f)
-
-            # Store in session state with backup
-            save_customer_profile(sample_profile)
-            update_workflow_step(2)
-
-            st.success("⚡ Sample customer profile loaded successfully!")
-            st.info("🎯 **Profile:** Sarah Johnson - First-time investor looking for 2-3 bedroom apartment in Sydney northwest ($650K-$850K budget)")
-            st.rerun()
-
-        else:
-            st.error(f"Sample profile file not found at: {sample_profile_path}")
+        st.success("⚡ Sample customer profile loaded successfully!")
+        st.info("🎯 **Profile:** Sarah Johnson - First-time investor looking for 2-3 bedroom apartment in Sydney northwest ($650K-$850K budget)")
+        st.rerun()
 
     except Exception as e:
         st.error(f"Error loading sample profile: {str(e)}")
