@@ -46,14 +46,30 @@ class MCPAgent:
     def process_query(self, query: str) -> dict:
         """Process user query with context"""
         try:
-            system_prompt = f"""You are an AI assistant for a property investment analysis platform.
+            # Refresh context before each query to get latest data
+            self.initialize_context()
 
-Context:
-- Customer Profile: {json.dumps(self.context.get('customer_profile', {}), indent=2)}
-- Data Status: {json.dumps(self.context.get('app_state', {}), indent=2)}
-- Available Recommendations: {len(self.context.get('recommendations', []))} suburbs
+            customer_profile = self.context.get('customer_profile', {})
+            app_state = self.context.get('app_state', {})
 
-Provide helpful, specific answers about property investment analysis based on the available data.
+            # Build detailed context string
+            context_info = []
+            if customer_profile:
+                context_info.append(f"Client Profile: Available with {len(customer_profile)} sections")
+                context_info.append(f"Profile Details: {json.dumps(customer_profile, indent=2)}")
+            else:
+                context_info.append("Client Profile: Not yet created")
+
+            context_info.append(f"Data Status: {json.dumps(app_state, indent=2)}")
+
+            system_prompt = f"""You are an AI assistant for a property agent analysis platform.
+
+Current Session Data:
+{chr(10).join(context_info)}
+
+Your role is to help property agents analyze data and assist their clients with property decisions.
+If client profile or data is available, use it to provide specific, personalized answers.
+If data is missing, guide the user to complete the necessary steps.
 """
 
             response = self.client.chat.completions.create(
@@ -152,26 +168,28 @@ class NaturalLanguageInterface:
             context = self.agent.context
 
             # Clean status indicators
-            profile_status = "Available" if context.get('customer_profile') else "Not created"
-            data_status = "Available" if context.get('suburb_data') else "Not uploaded"
-            recommendations_status = "Available" if context.get('recommendations') else "Not generated"
+            profile_status = "✓ Available" if context.get('customer_profile') else "Not created"
+            data_status = "✓ Available" if context.get('suburb_data') else "Not uploaded"
+            recommendations_status = "✓ Available" if context.get('recommendations') else "Not generated"
 
-            welcome_message = f"""Hello! I'm your AI property investment assistant.
+            welcome_message = f"""As an AI assistant for a property agent analysis platform, I can assist you in a number of ways:
 
-**Current Status:**
-• Customer Profile: {profile_status}
+1. **Property Analysis:** I can provide comprehensive data analysis on properties, including price trends, historical data, rental yield, etc., to help you make informed decisions.
+
+2. **Recommendations:** Based on your client's profile and preferences, I can recommend potential suburbs or specific properties. Currently, we don't have any available recommendations because your client's profile and data status are not provided.
+
+3. **Market Trends:** I can keep you updated with the latest market trends and news, which could influence your strategies.
+
+4. **Risk Assessment:** I can help you assess the potential risks associated with different properties or areas, and suggest ways to mitigate them.
+
+5. **Portfolio Management:** I can assist you in managing your client's property portfolio, tracking their properties, and optimizing returns.
+
+Please provide more specific information about your client's preferences, financial situation, and property goals, so I can provide more personalized assistance.
+
+**Current Session Data:**
+• Client Profile: {profile_status}
 • Market Data: {data_status}
-• AI Recommendations: {recommendations_status}
-
-**How I can help:**
-• Analyze your investment profile and goals
-• Interpret HtAG market data and trends
-• Explain AI recommendation scores and rankings
-• Provide cash flow projections and risk analysis
-• Search and filter property data
-• Generate custom reports
-
-What would you like to know about your property analysis?"""
+• Recommendations: {recommendations_status}"""
 
             st.session_state.chat_history = [{
                 'role': 'assistant',
@@ -189,23 +207,29 @@ What would you like to know about your property analysis?"""
 
         # Clean chat input
         if prompt := st.chat_input("Ask anything about your property analysis...", key="main_chat_input"):
-            # Add user message
+            # Add user message to history
             st.session_state.chat_history.append({
                 'role': 'user',
                 'content': prompt
             })
 
-            # Process with clean loading
-            with st.spinner("Thinking..."):
-                response = self.agent.process_query(prompt)
+            # Display user message immediately
+            with st.chat_message("user"):
+                st.markdown(prompt)
 
-                # Add response
-                st.session_state.chat_history.append({
-                    'role': 'assistant',
-                    'content': response['response']
-                })
+            # Process with clean loading and show response
+            with st.chat_message("assistant"):
+                with st.spinner("Thinking..."):
+                    response = self.agent.process_query(prompt)
 
-            st.rerun()
+                    # Add response to history
+                    st.session_state.chat_history.append({
+                        'role': 'assistant',
+                        'content': response['response']
+                    })
+
+                    # Display response
+                    st.markdown(response['response'])
 
 
 def render_chat_page():

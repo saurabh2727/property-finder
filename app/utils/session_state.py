@@ -192,8 +192,9 @@ def reset_session_state():
 
 def get_workflow_progress():
     """Get the current workflow progress as percentage"""
-    total_steps = 4  # Updated to 4-step workflow
-    return (st.session_state.workflow_step / total_steps) * 100
+    total_steps = 5  # 5-step workflow: Dashboard, Profile, Data, Recommendations, Reports
+    current_step = min(st.session_state.workflow_step, total_steps)  # Cap at max steps
+    return (current_step / total_steps) * 100
 
 def render_workflow_progress(current_step=None):
     """
