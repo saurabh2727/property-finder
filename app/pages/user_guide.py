@@ -41,11 +41,13 @@ def render_user_guide_page():
         **Purpose**: Create a comprehensive profile of your client's investment goals, financial capacity, and preferences.
 
         **What You'll Do:**
-        - Upload client discovery questionnaires (PDF/Word documents)
-        - OR manually enter client information using our guided form
+        - **Option 1**: Upload client discovery questionnaires (PDF/Word/TXT documents) and click "🤖 Analyze Document"
+        - **Option 2**: Click "✏️ Enter Manually" to use our guided form
+        - **Option 3**: Click "⚡ Load Sample Profile" to test the platform with pre-filled data
         - Define investment budget and financial constraints
         - Set investment timeline and goals (capital growth vs rental yield)
         - Specify location preferences and property types
+        - **Edit Profile**: After generation, click "📝 Edit Profile" to make changes
 
         **What the System Does:**
         - Automatically extracts key information from uploaded documents using AI
