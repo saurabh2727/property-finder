@@ -6,12 +6,20 @@ import plotly.graph_objects as go
 from services.openai_service import OpenAIService
 from utils.session_state import update_workflow_step, save_recommendations, backup_session_data
 from models.ml_recommender import PropertyRecommendationEngine
+from styles.global_styles import get_global_css
+from components.property_card import render_property_card, render_comparison_cards, render_hero_section
 
 def render_recommendations_page():
-    """Render the AI/ML recommendations page"""
+    """Render the AI/ML recommendations page with modern design"""
 
-    st.title("⭐ AI Property Recommendations")
-    st.subheader("Machine Learning-Powered Investment Insights")
+    # Inject global CSS
+    st.markdown(get_global_css(), unsafe_allow_html=True)
+
+    # Hero Section
+    render_hero_section(
+        title="⭐ AI Property Recommendations",
+        subtitle="Machine Learning-powered insights tailored to your investment goals"
+    )
 
     # Progress indicator
     progress_cols = st.columns(5)

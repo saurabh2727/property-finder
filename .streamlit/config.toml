@@ -12,3 +12,14 @@ gatherUsageStats = false
 
 [client]
 showErrorDetails = false
+
+[theme]
+# Professional Real Estate Theme (Domain/REA inspired)
+primaryColor = "#002F6C"              # Deep professional blue
+backgroundColor = "#FFFFFF"            # Clean white
+secondaryBackgroundColor = "#F7FAFC"  # Light gray background
+textColor = "#001E3C"                 # Dark navy text
+font = "sans serif"                   # Clean sans-serif font
+
+# Additional theme customization
+base = "light"

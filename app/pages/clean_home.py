@@ -1,72 +1,85 @@
 import streamlit as st
 from utils.session_state import update_workflow_step
 from components.sample_files import render_sample_files_section
+from styles.global_styles import get_global_css, COLORS
+from components.property_card import render_hero_section, render_metric_grid
 
 def render_clean_home_page():
-    """Render a modern, professional home page"""
+    """Render a modern, professional home page with new design"""
 
-    # Standard header to match other pages
-    st.title("🏠 Dashboard")
-    st.subheader("Property Investment Analysis Platform")
+    # Inject global CSS
+    st.markdown(get_global_css(), unsafe_allow_html=True)
 
-    # Feature cards with Streamlit columns
+    # Hero Section
+    render_hero_section(
+        title="🏡 Property Investment Analysis Platform",
+        subtitle="Data-driven insights for smarter property investment decisions"
+    )
+
+    # Overview Metrics
+    if st.session_state.get('workflow_step', 1) > 1:
+        metrics = []
+        if st.session_state.get('profile_generated'):
+            metrics.append({'icon': '✓', 'value': 'Complete', 'label': 'Customer Profile'})
+        if st.session_state.get('data_uploaded'):
+            suburb_count = len(st.session_state.get('suburb_data', []))
+            metrics.append({'icon': '📊', 'value': f"{suburb_count}", 'label': 'Suburbs Analyzed'})
+        if st.session_state.get('recommendations'):
+            rec_count = len(st.session_state.recommendations.get('primary_recommendations', []))
+            metrics.append({'icon': '🎯', 'value': f"{rec_count}", 'label': 'Recommendations'})
+
+        if metrics:
+            render_metric_grid(metrics)
+            st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
+
+    # Feature cards with new design
+    st.markdown("## Platform Features")
+
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        st.markdown("""
-        <div style="background: white; border: 1px solid #ecf0f1; border-radius: 16px; padding: 2rem;
-                    box-shadow: 0 4px 20px rgba(0,0,0,0.1); text-align: center; height: 300px;
-                    transition: transform 0.3s ease; border-top: 4px solid #00a86b;">
-            <h3 style="color: #2c3e50; margin-bottom: 1rem; font-weight: 600;">Customer Profiling</h3>
-            <p style="color: #7f8c8d; line-height: 1.6; font-size: 0.95rem;">
+        st.markdown(f"""
+        <div class="metric-card" style="text-align: center; height: 280px;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">👤</div>
+            <h3 style="color: {COLORS['dark_navy']}; margin-bottom: 1rem;">Customer Profiling</h3>
+            <p style="color: {COLORS['slate_gray']}; line-height: 1.6; font-size: 0.9rem;">
                 Automated analysis of client requirements and investment goals from uploaded documents or manual entry.
             </p>
             <div style="margin-top: 1.5rem;">
-                <span style="background: #00a86b; color: white;
-                           padding: 0.5rem 1rem; border-radius: 20px; font-size: 0.85rem; font-weight: 600;">
-                    AI-Powered
-                </span>
+                <span class="badge badge-success">AI-Powered</span>
             </div>
         </div>
         """, unsafe_allow_html=True)
 
     with col2:
-        st.markdown("""
-        <div style="background: white; border: 1px solid #ecf0f1; border-radius: 16px; padding: 2rem;
-                    box-shadow: 0 4px 20px rgba(0,0,0,0.1); text-align: center; height: 300px;
-                    transition: transform 0.3s ease; border-top: 4px solid #00a86b;">
-            <h3 style="color: #2c3e50; margin-bottom: 1rem; font-weight: 600;">Market Analysis</h3>
-            <p style="color: #7f8c8d; line-height: 1.6; font-size: 0.95rem;">
+        st.markdown(f"""
+        <div class="metric-card" style="text-align: center; height: 280px;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">📊</div>
+            <h3 style="color: {COLORS['dark_navy']}; margin-bottom: 1rem;">Market Analysis</h3>
+            <p style="color: {COLORS['slate_gray']}; line-height: 1.6; font-size: 0.9rem;">
                 Advanced filtering and scoring of suburbs based on growth potential, rental yields, and risk factors.
             </p>
             <div style="margin-top: 1.5rem;">
-                <span style="background: #3498db; color: white;
-                           padding: 0.5rem 1rem; border-radius: 20px; font-size: 0.85rem; font-weight: 600;">
-                    Data-Driven
-                </span>
+                <span class="badge badge-info">Data-Driven</span>
             </div>
         </div>
         """, unsafe_allow_html=True)
 
     with col3:
-        st.markdown("""
-        <div style="background: white; border: 1px solid #ecf0f1; border-radius: 16px; padding: 2rem;
-                    box-shadow: 0 4px 20px rgba(0,0,0,0.1); text-align: center; height: 300px;
-                    transition: transform 0.3s ease; border-top: 4px solid #00a86b;">
-            <h3 style="color: #2c3e50; margin-bottom: 1rem; font-weight: 600;">Investment Reports</h3>
-            <p style="color: #7f8c8d; line-height: 1.6; font-size: 0.95rem;">
+        st.markdown(f"""
+        <div class="metric-card" style="text-align: center; height: 280px;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">📄</div>
+            <h3 style="color: {COLORS['dark_navy']}; margin-bottom: 1rem;">Investment Reports</h3>
+            <p style="color: {COLORS['slate_gray']}; line-height: 1.6; font-size: 0.9rem;">
                 Professional-grade reports with cash flow projections, suburb comparisons, and actionable recommendations.
             </p>
             <div style="margin-top: 1.5rem;">
-                <span style="background: #9b59b6; color: white;
-                           padding: 0.5rem 1rem; border-radius: 20px; font-size: 0.85rem; font-weight: 600;">
-                    Professional
-                </span>
+                <span class="badge badge-primary">Professional</span>
             </div>
         </div>
         """, unsafe_allow_html=True)
 
-    st.markdown("---")
+    st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
 
     # Sample files section
     render_sample_files_section()
