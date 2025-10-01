@@ -41,12 +41,17 @@ def collect_customer_profile():
         help="Upload the completed customer questionnaire document"
     )
 
-    # Action buttons
+    # Show file upload status
+    if uploaded_file is not None:
+        st.success(f"✅ File uploaded: {uploaded_file.name}")
+
+    # Action buttons - always visible
     col_a, col_b, col_c = st.columns(3)
 
     with col_a:
-        if uploaded_file is not None:
-            if st.button("🤖 Analyze Document", type="primary", use_container_width=True):
+        # Disable button if no file uploaded
+        if st.button("🤖 Analyze Document", type="primary", use_container_width=True, disabled=(uploaded_file is None)):
+            if uploaded_file is not None:
                 analyze_customer_document(uploaded_file)
 
     with col_b:
@@ -60,8 +65,7 @@ def collect_customer_profile():
     col1, col2 = st.columns([2, 1])
 
     with col1:
-        if uploaded_file is not None:
-            st.success(f"✅ File uploaded: {uploaded_file.name}")
+        pass  # Empty for now, can add more content later
 
     with col2:
         st.markdown("### Sample Questions")
@@ -300,7 +304,11 @@ def display_existing_profile():
             st.write(f"**Property Types:** {', '.join(prefs.get('property_types', []))}")
         with col2:
             price_range = prefs.get('price_range', {})
-            st.write(f"**Price Range:** ${price_range.get('min', 'N/A')} - ${price_range.get('max', 'N/A')}")
+            # Handle both dict and string formats for price_range
+            if isinstance(price_range, dict):
+                st.write(f"**Price Range:** ${price_range.get('min', 'N/A')} - ${price_range.get('max', 'N/A')}")
+            else:
+                st.write(f"**Price Range:** {price_range}")
             st.write(f"**Bedroom Range:** {prefs.get('bedroom_range', 'N/A')}")
 
     # Lifestyle Factors
