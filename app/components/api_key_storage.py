@@ -5,7 +5,6 @@ with browser localStorage persistence
 """
 import streamlit as st
 import streamlit.components.v1 as components
-import hashlib
 
 def _get_storage_key():
     """Generate a consistent key for localStorage"""
@@ -122,9 +121,6 @@ def render_api_key_input_with_storage():
     """
 
     st.markdown("**🔑 API Configuration**")
-
-    # Inject localStorage helper functions
-    inject_localstorage_script()
 
     # Try to load from Streamlit secrets first (admin key for shared use)
     admin_key_configured = False
