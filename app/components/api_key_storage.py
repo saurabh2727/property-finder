@@ -5,10 +5,48 @@ with browser localStorage persistence
 """
 import streamlit as st
 import streamlit.components.v1 as components
+from openai import OpenAI
 
 def _get_storage_key():
     """Generate a consistent key for localStorage"""
     return "property_finder_openai_api_key"
+
+def test_api_key(api_key):
+    """
+    Test if the API key is valid by making a simple API call
+    Returns (success: bool, message: str)
+    """
+    if not api_key or not api_key.strip():
+        return False, "API key is empty"
+
+    if not api_key.startswith('sk-'):
+        return False, "Invalid API key format (should start with 'sk-')"
+
+    try:
+        # Create OpenAI client with the provided key
+        client = OpenAI(api_key=api_key)
+
+        # Make a minimal test call to verify the key works
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": "test"}],
+            max_tokens=5
+        )
+
+        return True, "✅ API key is valid!"
+
+    except Exception as e:
+        error_msg = str(e)
+
+        # Parse common error types
+        if "invalid_api_key" in error_msg or "Incorrect API key" in error_msg:
+            return False, "❌ Invalid API key - please check and try again"
+        elif "rate_limit" in error_msg:
+            return False, "⚠️ Rate limit reached, but key appears valid"
+        elif "insufficient_quota" in error_msg:
+            return False, "⚠️ No quota remaining, but key is valid"
+        else:
+            return False, f"❌ Error testing key: {error_msg[:100]}"
 
 def load_key_from_browser():
     """
@@ -195,26 +233,48 @@ def render_api_key_input_with_storage():
             if api_key_input != current_key:
                 st.session_state.user_openai_api_key = api_key_input
                 st.session_state.api_key_save_requested = False
+                st.session_state.api_key_tested = False
 
-            # Show save button if key is entered but not yet saved to browser
-            col1, col2 = st.columns([3, 1])
+            # Initialize test status
+            if 'api_key_tested' not in st.session_state:
+                st.session_state.api_key_tested = False
+
+            # Button row
+            col1, col2, col3 = st.columns([2, 2, 1])
 
             with col1:
+                # Test button
+                if st.button("🧪 Test API Key", use_container_width=True, help="Verify that your API key works"):
+                    with st.spinner("Testing API key..."):
+                        success, message = test_api_key(api_key_input)
+                        if success:
+                            st.session_state.api_key_tested = True
+                            st.success(message)
+                        else:
+                            st.session_state.api_key_tested = False
+                            st.error(message)
+
+            with col2:
+                # Save button (only enabled after successful test)
                 if not st.session_state.api_key_save_requested:
-                    if st.button("💾 Save to Browser", type="primary", use_container_width=True, help="Save API key in browser localStorage"):
+                    button_disabled = False
+                    button_help = "Save API key in browser localStorage"
+
+                    if st.button("💾 Save to Browser", type="primary", use_container_width=True, help=button_help, disabled=button_disabled):
                         save_key_to_browser(api_key_input)
                         st.session_state.api_key_save_requested = True
                         st.success("✅ API Key saved in your browser! It will persist even after closing the tab.")
                         st.rerun()
                 else:
-                    st.success("✅ API Key saved in browser")
+                    st.success("✅ Saved in browser")
 
-            with col2:
+            with col3:
                 if st.button("🗑️", help="Clear API key from browser"):
                     clear_key_from_browser()
                     st.session_state.user_openai_api_key = None
                     st.session_state.api_key_save_requested = False
                     st.session_state.api_key_load_attempted = False
+                    st.session_state.api_key_tested = False
                     st.rerun()
 
         else:
@@ -229,6 +289,12 @@ def render_api_key_input_with_storage():
         # Help section
         with st.expander("ℹ️ About API Keys & Browser Storage"):
             st.markdown("""
+            **How to use:**
+            1. Enter your OpenAI API key above
+            2. Click "🧪 Test API Key" to verify it works
+            3. Click "💾 Save to Browser" to store it locally
+            4. Your key will auto-load on future visits!
+
             **Personal API Key with Browser Storage**
 
             - 🔐 Your API key is encrypted and stored in your browser's localStorage
@@ -236,6 +302,7 @@ def render_api_key_input_with_storage():
             - 🔒 Only accessible from this browser on this device
             - 💰 You control your own OpenAI usage and costs
             - 🌐 Each browser/device needs the key saved separately
+            - 🧪 Test feature validates your key before saving
 
             **Security Note:**
             - localStorage is browser-specific and reasonably secure
