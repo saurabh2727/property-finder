@@ -115,20 +115,24 @@ def disable_sidebar_collapse():
         transition: none !important;
     }
 
-    [data-testid="stSidebar"] > div {
-        width: 280px !important;
+    /* All child divs should use full width */
+    [data-testid="stSidebar"] > div,
+    [data-testid="stSidebar"] > div > div,
+    [data-testid="stSidebar"] [data-testid="stVerticalBlock"],
+    [data-testid="stSidebar"] .css-1544g2n,
+    [data-testid="stSidebar"] section {
+        width: 100% !important;
+        max-width: 100% !important;
         visibility: visible !important;
         display: block !important;
-        padding: 1rem 1rem !important;
-    }
-
-    [data-testid="stSidebar"] .css-1544g2n {
-        padding: 1rem 1rem !important;
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
     }
 
     /* Ensure sidebar content is visible */
     [data-testid="stSidebar"] * {
         visibility: visible !important;
+        max-width: 100% !important;
     }
 
     /* Make sure main content doesn't overlap */
@@ -149,8 +153,8 @@ def disable_sidebar_collapse():
     </style>
 
     <script>
-    // Force sidebar to stay open
-    setTimeout(function() {
+    // Force sidebar to stay open and expand content
+    function fixSidebar() {
         const sidebar = document.querySelector('[data-testid="stSidebar"]');
         if (sidebar) {
             // Remove any collapsed classes
@@ -161,6 +165,13 @@ def disable_sidebar_collapse():
             sidebar.style.minWidth = '280px';
             sidebar.style.maxWidth = '280px';
             sidebar.style.transform = 'none';
+
+            // Force all child divs to use full width
+            const sidebarDivs = sidebar.querySelectorAll('div, section');
+            sidebarDivs.forEach(function(div) {
+                div.style.width = '100%';
+                div.style.maxWidth = '100%';
+            });
         }
 
         // Adjust main content
@@ -168,17 +179,16 @@ def disable_sidebar_collapse():
         if (main) {
             main.style.marginLeft = '280px';
         }
-    }, 100);
+    }
+
+    // Run on load
+    setTimeout(fixSidebar, 100);
 
     // Run periodically to ensure sidebar stays open
     setInterval(function() {
         const sidebar = document.querySelector('[data-testid="stSidebar"]');
         if (sidebar && sidebar.offsetWidth < 250) {
-            sidebar.style.display = 'flex';
-            sidebar.style.visibility = 'visible';
-            sidebar.style.width = '280px';
-            sidebar.style.minWidth = '280px';
-            sidebar.style.transform = 'none';
+            fixSidebar();
         }
     }, 500);
     </script>
