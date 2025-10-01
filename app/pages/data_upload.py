@@ -53,15 +53,12 @@ def render_data_upload_page():
 def upload_new_data():
     """Handle new data upload"""
 
-    st.markdown("### Upload Suburb Market Data")
-
-    # Sample files section
-    render_sample_files_section()
-
-    st.markdown("---")
+    # Sample files section - foldable
+    with st.expander("📥 Sample Files", expanded=False):
+        render_sample_files_section()
 
     # Data source information
-    with st.expander("📋 Supported Data Sources", expanded=True):
+    with st.expander("📋 Supported Data Sources", expanded=False):
         st.markdown("""
         **Compatible Data Sources:**
         - **HtAG**: Real estate market data platform
@@ -79,12 +76,8 @@ def upload_new_data():
         - Performance indicators
         """)
 
-    # File upload section
-    col1, col2 = st.columns([2, 1])
-
-    with col1:
-        st.markdown("#### Upload Data File")
-
+    # File upload section - foldable
+    with st.expander("📤 Upload Data File", expanded=True):
         uploaded_file = st.file_uploader(
             "Choose your suburb data file",
             type=['csv', 'xlsx', 'xls'],
@@ -97,22 +90,6 @@ def upload_new_data():
             # Process file button
             if st.button("📊 Process & Validate Data", type="primary"):
                 process_uploaded_data(uploaded_file)
-
-    with col2:
-        st.markdown("#### Sample Data Structure")
-
-        # Show sample data format
-        sample_data = pd.DataFrame({
-            'Suburb': ['Bondi', 'Parramatta', 'Richmond'],
-            'State': ['NSW', 'NSW', 'VIC'],
-            'Median Price': [1200000, 850000, 750000],
-            'Rental Yield on Houses': [3.5, 4.2, 4.8],
-            'Distance (km) to CBD': [8, 25, 12],
-            'Population': [12500, 25000, 18000]
-        })
-
-        st.dataframe(sample_data, use_container_width=True)
-        st.caption("Sample data format showing key required fields")
 
     # Alternative data entry options
     st.markdown("---")
