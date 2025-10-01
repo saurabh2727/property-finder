@@ -56,7 +56,7 @@ def upload_new_data():
     with st.expander("📋 Supported Data Sources", expanded=True):
         st.markdown("""
         **Compatible Data Sources:**
-        - **H-Tag**: Real estate market data platform
+        - **HtAG**: Real estate market data platform
         - **DSR (Data Services & Research)**: Property analytics
         - **Suburb Finder**: Demographic and market insights
         - **Price Finder**: Property valuation data

@@ -116,7 +116,7 @@ def render_clean_home_page():
         - Property preferences and location priorities
 
         **Step 2: Market Data Import**
-        Import suburb data from sources like H-Tag, DSR, Suburb Finder, or upload your own CSV/Excel files with market metrics.
+        Import suburb data from sources like HtAG, DSR, Suburb Finder, or upload your own CSV/Excel files with market metrics.
 
         **Step 3: Analysis & Scoring**
         Run automated analysis to score suburbs on:

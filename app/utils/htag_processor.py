@@ -6,7 +6,7 @@ import re
 
 class HtAGProcessor:
     """
-    HtAG (H-Tag) Data Processor
+    HtAG Data Processor
     Automatically converts raw HtAG export files into standardized format
     """
 

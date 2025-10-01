@@ -34,7 +34,7 @@ def render_home_page():
         st.markdown("""
         <div class="metric-card">
             <h4>📊 Smart Data Integration</h4>
-            <p>Connect with multiple data sources (H-Tag, DSR, Suburb Finder) and process complex market data effortlessly.</p>
+            <p>Connect with multiple data sources (HtAG, DSR, Suburb Finder) and process complex market data effortlessly.</p>
         </div>
         """, unsafe_allow_html=True)
 
