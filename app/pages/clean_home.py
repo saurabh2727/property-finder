@@ -159,30 +159,29 @@ def render_clean_home_page():
     col1, col2 = st.columns([2, 1])
 
     with col1:
-        st.subheader("Getting Started")
+        with st.expander("📚 Getting Started", expanded=False):
+            st.markdown("""
+            **Step 1: Customer Profiling**
+            Upload customer discovery questionnaire or manually enter client requirements including:
+            - Financial capacity and budget constraints
+            - Investment goals and risk tolerance
+            - Property preferences and location priorities
 
-        st.markdown("""
-        **Step 1: Customer Profiling**
-        Upload customer discovery questionnaire or manually enter client requirements including:
-        - Financial capacity and budget constraints
-        - Investment goals and risk tolerance
-        - Property preferences and location priorities
+            **Step 2: Market Data Import**
+            Import suburb data from sources like HtAG, DSR, Suburb Finder, or upload your own CSV/Excel files with market metrics.
 
-        **Step 2: Market Data Import**
-        Import suburb data from sources like HtAG, DSR, Suburb Finder, or upload your own CSV/Excel files with market metrics.
+            **Step 3: Analysis & Scoring**
+            Run automated analysis to score suburbs on:
+            - Growth potential (capital appreciation)
+            - Rental yield performance
+            - Risk factors (vacancy, market volatility)
 
-        **Step 3: Analysis & Scoring**
-        Run automated analysis to score suburbs on:
-        - Growth potential (capital appreciation)
-        - Rental yield performance
-        - Risk factors (vacancy, market volatility)
+            **Step 4: Agent Review**
+            Review AI recommendations, adjust scoring weights, and add professional insights and notes.
 
-        **Step 4: Agent Review**
-        Review AI recommendations, adjust scoring weights, and add professional insights and notes.
-
-        **Step 5: Generate Reports**
-        Create professional client presentations with suburb rankings, property listings, and cash flow projections.
-        """)
+            **Step 5: Generate Reports**
+            Create professional client presentations with suburb rankings, property listings, and cash flow projections.
+            """)
 
     with col2:
         st.markdown("### System Status")
