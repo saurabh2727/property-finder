@@ -136,6 +136,31 @@ def render_clean_sidebar():
         st.markdown(button_style, unsafe_allow_html=True)
 
         # Navigation buttons with cleaner approach
+        current_page = st.session_state.get('current_page', 'home')
+
+        # Add custom CSS for active button highlighting
+        st.markdown("""
+        <style>
+        /* Style for active navigation buttons */
+        div[data-testid="stSidebar"] button[kind="primary"] {
+            background-color: #3b82f6 !important;
+            color: white !important;
+            border-color: #3b82f6 !important;
+            font-weight: 600 !important;
+        }
+
+        div[data-testid="stSidebar"] button[kind="secondary"] {
+            background-color: white !important;
+            color: #374151 !important;
+            border: 1px solid #d1d5db !important;
+        }
+
+        div[data-testid="stSidebar"] button[kind="secondary"]:hover {
+            background-color: #f3f4f6 !important;
+            border-color: #3b82f6 !important;
+        }
+        </style>
+        """, unsafe_allow_html=True)
 
         nav_items = [
             ('home', 'Dashboard'),
@@ -149,30 +174,35 @@ def render_clean_sidebar():
         ]
 
         for page_key, page_name in nav_items:
-            if st.button(page_name, key=f"nav_{page_key}", use_container_width=True):
+            is_active = (page_key == current_page)
+            button_type = "primary" if is_active else "secondary"
+            if st.button(page_name, key=f"nav_{page_key}", use_container_width=True, type=button_type):
                 st.session_state.current_page = page_key
                 st.rerun()
 
-        # Workflow status - minimal design
+        # Workflow status - minimal design (4-step workflow)
         st.markdown("---")
         st.markdown("**Workflow Status**")
 
+        workflow_step = st.session_state.get('workflow_step', 1)
+
         steps = [
-            ("Customer Profile", st.session_state.get('profile_generated', False)),
-            ("Data Import", st.session_state.get('data_uploaded', False)),
-            ("Analysis Complete", st.session_state.get('analysis_complete', False)),
-            ("Recommendations", st.session_state.get('recommendations') is not None),
-            ("Final Report", st.session_state.get('final_report') is not None)
+            ("1. Customer Profile", st.session_state.get('profile_generated', False), 'customer_profile', 1),
+            ("2. Data Import", st.session_state.get('data_uploaded', False), 'data_upload', 2),
+            ("3. Analysis & Recommendations", st.session_state.get('recommendations') is not None, 'recommendations', 3),
+            ("4. Final Report", st.session_state.get('final_report') is not None, 'reports', 4)
         ]
 
-        for step_name, is_complete in steps:
-            status_color = "#10b981" if is_complete else "#d1d5db"
-            status_text = "Complete" if is_complete else "Pending"
+        for step_name, is_complete, page_key, step_num in steps:
+            is_current = (workflow_step == step_num or current_page == page_key)
+            status_color = "#10b981" if is_complete else ("#3b82f6" if is_current else "#d1d5db")
+            status_text = "Complete" if is_complete else ("Current" if is_current else "Pending")
+            font_weight = "font-weight: 600;" if is_current else ""
 
             st.markdown(f"""
             <div style="display: flex; align-items: center; margin: 0.5rem 0;">
                 <div style="width: 8px; height: 8px; border-radius: 50%; background: {status_color}; margin-right: 0.5rem;"></div>
-                <span style="font-size: 0.85rem; color: #374151;">{step_name}</span>
+                <span style="font-size: 0.85rem; color: #374151; {font_weight}">{step_name}</span>
                 <span style="font-size: 0.75rem; color: #6b7280; margin-left: auto;">{status_text}</span>
             </div>
             """, unsafe_allow_html=True)

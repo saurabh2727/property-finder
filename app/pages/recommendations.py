@@ -4,7 +4,7 @@ import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 from services.openai_service import OpenAIService
-from utils.session_state import update_workflow_step, save_recommendations, backup_session_data
+from utils.session_state import update_workflow_step, render_workflow_progress, save_recommendations, backup_session_data
 from models.ml_recommender import PropertyRecommendationEngine
 from styles.global_styles import get_global_css
 from components.property_card import render_property_card, render_comparison_cards, render_hero_section
@@ -21,16 +21,8 @@ def render_recommendations_page():
         subtitle="ML-powered feature analysis combined with AI-generated insights"
     )
 
-    # Progress indicator (now 4 steps instead of 5)
-    progress_cols = st.columns(4)
-    with progress_cols[0]:
-        st.markdown("✅ Step 1: Customer Profile")
-    with progress_cols[1]:
-        st.markdown("✅ Step 2: Data Upload")
-    with progress_cols[2]:
-        st.markdown("🔄 **Step 3: Analysis & Recommendations**")
-    with progress_cols[3]:
-        st.markdown("⏳ Step 4: Reports")
+    # Progress indicator (4-step workflow)
+    render_workflow_progress(current_step=3)
 
     st.markdown("---")
 
@@ -855,7 +847,11 @@ def display_top_recommendations(recommendations):
     primary_recs = recommendations.get('primary_recommendations')
     engine_used = recommendations.get('recommendation_engine', 'unknown')
 
-    if primary_recs is not None and not primary_recs.empty:
+    # Initialize top_suburbs and engine_type
+    top_suburbs = None
+    engine_type = "Unknown"
+
+    if primary_recs is not None and not (isinstance(primary_recs, pd.DataFrame) and primary_recs.empty):
         top_suburbs = primary_recs
         if engine_used == 'ai_genai':
             engine_type = "🤖 AI/GenAI-Powered"
@@ -864,17 +860,22 @@ def display_top_recommendations(recommendations):
         else:
             engine_type = "🔍 Primary Recommendations"
     # Legacy fallback for old data structure
-    elif ai_recs is not None and not ai_recs.empty:
+    elif ai_recs is not None and not (isinstance(ai_recs, pd.DataFrame) and ai_recs.empty):
         top_suburbs = ai_recs
         engine_type = "🤖 AI-Powered (Legacy)"
-    elif ml_recs is not None and not ml_recs.empty:
+    elif ml_recs is not None and not (isinstance(ml_recs, pd.DataFrame) and ml_recs.empty):
         top_suburbs = ml_recs
         engine_type = "🤖 ML-Powered (Legacy)"
-    else:
+    elif rule_recs is not None and not (isinstance(rule_recs, pd.DataFrame) and rule_recs.empty):
         top_suburbs = rule_recs
         engine_type = "📊 Rule-Based (Legacy)"
 
-    if top_suburbs is not None and not top_suburbs.empty:
+    # Check if we have valid data
+    if top_suburbs is None or (isinstance(top_suburbs, pd.DataFrame) and top_suburbs.empty):
+        st.warning("No recommendations available. Please regenerate.")
+        return
+
+    if isinstance(top_suburbs, pd.DataFrame) and not top_suburbs.empty:
         # Show engine type
         st.info(f"**Recommendation Engine:** {engine_type}")
 

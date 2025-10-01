@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from utils.document_processor import DocumentProcessor
 from utils.htag_processor import HtAGProcessor
-from utils.session_state import update_workflow_step, save_suburb_data, backup_session_data
+from utils.session_state import update_workflow_step, save_suburb_data, backup_session_data, render_workflow_progress
 from components.sample_files import render_sample_files_section
 from styles.global_styles import get_global_css, COLORS
 from components.property_card import render_hero_section
@@ -22,17 +22,7 @@ def render_data_upload_page():
     )
 
     # Progress indicator
-    progress_cols = st.columns(5)
-    with progress_cols[0]:
-        st.markdown("✅ Step 1: Customer Profile")
-    with progress_cols[1]:
-        st.markdown("🔄 **Step 2: Data Upload**")
-    with progress_cols[2]:
-        st.markdown("⏳ Step 3: Analysis")
-    with progress_cols[3]:
-        st.markdown("⏳ Step 4: Recommendations")
-    with progress_cols[4]:
-        st.markdown("⏳ Step 5: Reports")
+    render_workflow_progress(current_step=2)
 
     st.markdown("---")
 

@@ -19,7 +19,7 @@ from reportlab.graphics.charts.lineplots import LinePlot
 from reportlab.graphics.charts.barcharts import VerticalBarChart
 import tempfile
 import os
-from utils.session_state import backup_session_data
+from utils.session_state import backup_session_data, render_workflow_progress
 from styles.global_styles import get_global_css, COLORS
 from components.property_card import render_hero_section
 
@@ -36,17 +36,7 @@ def render_reports_page():
     )
 
     # Progress indicator
-    progress_cols = st.columns(5)
-    with progress_cols[0]:
-        st.markdown("✅ Step 1: Customer Profile")
-    with progress_cols[1]:
-        st.markdown("✅ Step 2: Data Upload")
-    with progress_cols[2]:
-        st.markdown("✅ Step 3: Analysis")
-    with progress_cols[3]:
-        st.markdown("✅ Step 4: Recommendations")
-    with progress_cols[4]:
-        st.markdown("🔄 **Step 5: Reports**")
+    render_workflow_progress(current_step=4)
 
     st.markdown("---")
 

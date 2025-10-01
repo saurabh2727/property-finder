@@ -1,7 +1,7 @@
 import streamlit as st
 from utils.document_processor import DocumentProcessor
 from services.openai_service import OpenAIService
-from utils.session_state import update_workflow_step
+from utils.session_state import update_workflow_step, render_workflow_progress
 import json
 
 def render_customer_profile_page():
@@ -11,17 +11,7 @@ def render_customer_profile_page():
     st.subheader("AI-Powered Customer Analysis")
 
     # Progress indicator
-    progress_cols = st.columns(5)
-    with progress_cols[0]:
-        st.markdown("🔄 **Step 1: Customer Profile**")
-    with progress_cols[1]:
-        st.markdown("⏳ Step 2: Data Upload")
-    with progress_cols[2]:
-        st.markdown("⏳ Step 3: Analysis")
-    with progress_cols[3]:
-        st.markdown("⏳ Step 4: Recommendations")
-    with progress_cols[4]:
-        st.markdown("⏳ Step 5: Reports")
+    render_workflow_progress(current_step=1)
 
     st.markdown("---")
 

@@ -192,8 +192,82 @@ def reset_session_state():
 
 def get_workflow_progress():
     """Get the current workflow progress as percentage"""
-    total_steps = 5
+    total_steps = 4  # Updated to 4-step workflow
     return (st.session_state.workflow_step / total_steps) * 100
+
+def render_workflow_progress(current_step=None):
+    """
+    Render consistent 4-step workflow progress indicator across all pages
+
+    Args:
+        current_step: Optional step number (1-4) to highlight as current
+                     If not provided, uses st.session_state.workflow_step
+    """
+    if current_step is None:
+        current_step = st.session_state.get('workflow_step', 1)
+
+    # Define workflow steps with their completion status
+    steps = [
+        {
+            'number': 1,
+            'name': 'Customer Profile',
+            'icon_pending': '⏳',
+            'icon_current': '🔄',
+            'icon_complete': '✅',
+            'is_complete': st.session_state.get('profile_generated', False)
+        },
+        {
+            'number': 2,
+            'name': 'Data Upload',
+            'icon_pending': '⏳',
+            'icon_current': '🔄',
+            'icon_complete': '✅',
+            'is_complete': st.session_state.get('data_uploaded', False)
+        },
+        {
+            'number': 3,
+            'name': 'Analysis & Recommendations',
+            'icon_pending': '⏳',
+            'icon_current': '🔄',
+            'icon_complete': '✅',
+            'is_complete': st.session_state.get('recommendations') is not None
+        },
+        {
+            'number': 4,
+            'name': 'Reports',
+            'icon_pending': '⏳',
+            'icon_current': '🔄',
+            'icon_complete': '✅',
+            'is_complete': st.session_state.get('final_report') is not None
+        }
+    ]
+
+    # Render progress indicator
+    progress_cols = st.columns(4)
+
+    for idx, step in enumerate(steps):
+        with progress_cols[idx]:
+            step_num = step['number']
+            is_current = (step_num == current_step)
+            is_complete = step['is_complete']
+
+            # Determine icon and styling
+            if is_complete:
+                icon = step['icon_complete']
+                style = ""
+            elif is_current:
+                icon = step['icon_current']
+                style = "**"
+            else:
+                icon = step['icon_pending']
+                style = ""
+
+            # Format text
+            text = f"{icon} Step {step_num}: {step['name']}"
+            if style:
+                text = f"{style}{text}{style}"
+
+            st.markdown(text)
 
 def save_customer_profile(profile_data):
     """Save customer profile and create backup"""
