@@ -16,6 +16,28 @@ def render_clean_home_page():
         subtitle="Data-driven insights for smarter property investment decisions"
     )
 
+    # Quick Actions Section - Prominent at top
+    st.markdown("## Quick Actions")
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        if st.button("🚀 Start New Analysis", type="primary", use_container_width=True):
+            update_workflow_step(1)
+            st.session_state.current_page = 'customer_profile'
+            st.rerun()
+
+    with col2:
+        if st.button("📊 Import Sample Data", use_container_width=True):
+            st.session_state.current_page = 'data_upload'
+            st.rerun()
+
+    with col3:
+        if st.button("📖 View Documentation", use_container_width=True):
+            st.info("Documentation would open here")
+
+    st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
+
     # Overview Metrics
     if st.session_state.get('workflow_step', 1) > 1:
         metrics = []
@@ -163,23 +185,7 @@ def render_clean_home_page():
         """)
 
     with col2:
-        st.markdown("### Quick Actions")
-
-        if st.button("Start New Analysis", type="primary", use_container_width=True):
-            update_workflow_step(1)
-            st.session_state.current_page = 'customer_profile'
-            st.rerun()
-
-        if st.button("Import Sample Data", use_container_width=True):
-            st.session_state.current_page = 'data_upload'
-            st.rerun()
-
-        if st.button("View Documentation", use_container_width=True):
-            st.info("Documentation would open here")
-
-        # System status
-        st.markdown("---")
-        st.markdown("**System Status**")
+        st.markdown("### System Status")
 
         col1_status, col2_status = st.columns(2)
         with col1_status:
