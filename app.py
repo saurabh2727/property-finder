@@ -96,102 +96,24 @@ def disable_sidebar_collapse():
     """Alternative approach: disable sidebar collapse button entirely"""
     st.markdown("""
     <style>
-    /* Hide all possible sidebar collapse buttons */
+    /* Hide sidebar collapse button */
     [data-testid="collapsedControl"],
     button[kind="header"],
     button[kind="headerNoPadding"] {
         display: none !important;
     }
 
-    /* Force sidebar to stay visible and prevent collapse */
-    [data-testid="stSidebar"] {
-        display: flex !important;
-        visibility: visible !important;
-        width: 280px !important;
-        min-width: 280px !important;
-        max-width: 280px !important;
-        flex-shrink: 0 !important;
-        transform: none !important;
-        transition: none !important;
+    /* Force sidebar to stay visible - simple approach */
+    section[data-testid="stSidebar"] {
+        width: 21rem !important;
+        min-width: 21rem !important;
     }
 
-    /* All child divs should use full width */
-    [data-testid="stSidebar"] > div,
-    [data-testid="stSidebar"] > div > div,
-    [data-testid="stSidebar"] [data-testid="stVerticalBlock"],
-    [data-testid="stSidebar"] .css-1544g2n,
-    [data-testid="stSidebar"] section {
-        width: 100% !important;
-        max-width: 100% !important;
-        visibility: visible !important;
-        display: block !important;
-        padding-left: 1rem !important;
-        padding-right: 1rem !important;
-    }
-
-    /* Ensure sidebar content is visible */
-    [data-testid="stSidebar"] * {
-        visibility: visible !important;
-        max-width: 100% !important;
-    }
-
-    /* Make sure main content doesn't overlap */
+    /* Adjust main content */
     .main {
-        margin-left: 280px !important;
-    }
-
-    .main .block-container {
-        padding-left: 1rem !important;
-        padding-right: 1rem !important;
-    }
-
-    /* Hide collapse button in all states */
-    section[data-testid="stSidebar"] button[kind="header"],
-    section[data-testid="stSidebar"] button[kind="headerNoPadding"] {
-        display: none !important;
+        margin-left: 0 !important;
     }
     </style>
-
-    <script>
-    // Force sidebar to stay open and expand content
-    function fixSidebar() {
-        const sidebar = document.querySelector('[data-testid="stSidebar"]');
-        if (sidebar) {
-            // Remove any collapsed classes
-            sidebar.classList.remove('collapsed');
-            sidebar.style.display = 'flex';
-            sidebar.style.visibility = 'visible';
-            sidebar.style.width = '280px';
-            sidebar.style.minWidth = '280px';
-            sidebar.style.maxWidth = '280px';
-            sidebar.style.transform = 'none';
-
-            // Force all child divs to use full width
-            const sidebarDivs = sidebar.querySelectorAll('div, section');
-            sidebarDivs.forEach(function(div) {
-                div.style.width = '100%';
-                div.style.maxWidth = '100%';
-            });
-        }
-
-        // Adjust main content
-        const main = document.querySelector('.main');
-        if (main) {
-            main.style.marginLeft = '280px';
-        }
-    }
-
-    // Run on load
-    setTimeout(fixSidebar, 100);
-
-    // Run periodically to ensure sidebar stays open
-    setInterval(function() {
-        const sidebar = document.querySelector('[data-testid="stSidebar"]');
-        if (sidebar && sidebar.offsetWidth < 250) {
-            fixSidebar();
-        }
-    }, 500);
-    </script>
     """, unsafe_allow_html=True)
 
 def main():
