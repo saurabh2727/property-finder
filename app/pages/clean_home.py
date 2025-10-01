@@ -156,10 +156,9 @@ def render_clean_home_page():
     """, unsafe_allow_html=True)
 
     # Getting started section
-    col1, col2 = st.columns([2, 1])
+    st.subheader("Getting Started")
 
-    with col1:
-        with st.expander("📚 Getting Started", expanded=False):
+    with st.expander("📚 Step-by-Step Guide", expanded=False):
             st.markdown("""
             **Step 1: Customer Profiling**
             Upload customer discovery questionnaire or manually enter client requirements including:
