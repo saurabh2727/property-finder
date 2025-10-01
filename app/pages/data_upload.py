@@ -448,8 +448,8 @@ def display_uploaded_data():
             st.rerun()
 
     with col2:
-        if st.button("➡️ Continue to Analysis", type="primary", use_container_width=True):
-            st.session_state.current_page = 'suburb_analysis'
+        if st.button("➡️ Continue to Analysis & Recommendations", type="primary", use_container_width=True):
+            st.session_state.current_page = 'recommendations'
             update_workflow_step(3)
             st.rerun()
 

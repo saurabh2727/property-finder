@@ -8,9 +8,8 @@ sys.path.append(str(app_dir))
 
 from pages.clean_home import render_clean_home_page
 from pages.user_guide import render_user_guide_page
-from pages.clean_customer_profile import render_clean_customer_profile_page
+from pages.customer_profile import render_customer_profile_page
 from pages.data_upload import render_data_upload_page
-from pages.suburb_analysis import render_suburb_analysis_page
 from pages.recommendations import render_recommendations_page
 from pages.reports import render_reports_page
 from pages.agent_review import render_agent_review_page
@@ -174,11 +173,9 @@ def main():
     elif page == 'user_guide':
         render_user_guide_page()
     elif page == 'customer_profile':
-        render_clean_customer_profile_page()
+        render_customer_profile_page()
     elif page == 'data_upload':
         render_data_upload_page()
-    elif page == 'suburb_analysis':
-        render_suburb_analysis_page()
     elif page == 'recommendations':
         render_recommendations_page()
     elif page == 'agent_review':

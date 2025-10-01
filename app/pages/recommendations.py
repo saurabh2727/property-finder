@@ -353,7 +353,23 @@ def render_ml_training_stage(df, customer_profile):
     """)
 
     # Use filtered data if available, otherwise use full dataset
-    working_df = st.session_state.get('filtered_suburbs', df)
+    filtered_df = st.session_state.get('filtered_suburbs')
+
+    # Check if filtered data is valid
+    if filtered_df is not None and not filtered_df.empty:
+        working_df = filtered_df
+        st.info(f"📊 Using {len(filtered_df)} filtered suburbs for ML training")
+    else:
+        working_df = df
+        if filtered_df is not None and filtered_df.empty:
+            st.warning("⚠️ Filters resulted in 0 suburbs. Using full dataset instead.")
+        else:
+            st.info(f"📊 Using all {len(df)} suburbs for ML training")
+
+    # Validate we have data to train on
+    if working_df is None or working_df.empty:
+        st.error("❌ No data available for ML training. Please upload data first.")
+        return None
 
     col1, col2 = st.columns([2, 1])
 
@@ -461,7 +477,23 @@ def render_ai_recommendations_stage(df, customer_profile, ml_results):
     """)
 
     # Use filtered data if available, otherwise use full dataset
-    working_df = st.session_state.get('filtered_suburbs', df)
+    filtered_df = st.session_state.get('filtered_suburbs')
+
+    # Check if filtered data is valid
+    if filtered_df is not None and not filtered_df.empty:
+        working_df = filtered_df
+        st.info(f"📊 Generating recommendations from {len(filtered_df)} filtered suburbs")
+    else:
+        working_df = df
+        if filtered_df is not None and filtered_df.empty:
+            st.warning("⚠️ Filters resulted in 0 suburbs. Using full dataset instead.")
+        else:
+            st.info(f"📊 Generating recommendations from all {len(df)} suburbs")
+
+    # Validate we have data
+    if working_df is None or working_df.empty:
+        st.error("❌ No data available for generating recommendations. Please upload data first.")
+        return
 
     col1, col2 = st.columns([1, 1])
 
