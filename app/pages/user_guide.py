@@ -498,201 +498,191 @@ def render_user_guide_page():
     st.markdown("---")
 
     # Session Management section
-    st.markdown("## Session Management & Data Persistence")
+    with st.expander("## 💾 Session Management & Data Persistence", expanded=False):
+        col1, col2 = st.columns([2, 1])
 
-    col1, col2 = st.columns([2, 1])
+        with col1:
+            st.markdown("""
+            **Automatic Session Persistence**: The platform now automatically saves your progress as you work.
 
-    with col1:
-        st.markdown("""
-        **Automatic Session Persistence**: The platform now automatically saves your progress as you work.
+            **How It Works:**
+            - **Automatic Backup**: Session data is backed up after each major step
+            - **Cross-Tab Persistence**: Switch between tabs without losing progress
+            - **Recovery System**: Automatic recovery if browser is refreshed
+            - **Data Integrity**: Customer profiles, uploaded data, and recommendations are preserved
 
-        **How It Works:**
-        - **Automatic Backup**: Session data is backed up after each major step
-        - **Cross-Tab Persistence**: Switch between tabs without losing progress
-        - **Recovery System**: Automatic recovery if browser is refreshed
-        - **Data Integrity**: Customer profiles, uploaded data, and recommendations are preserved
+            **What Gets Saved:**
+            - Customer profile information and investment criteria
+            - Uploaded suburb data and market analysis
+            - Generated recommendations and AI insights
+            - Agent review comments and modifications
+            - Report generation settings and preferences
 
-        **What Gets Saved:**
-        - Customer profile information and investment criteria
-        - Uploaded suburb data and market analysis
-        - Generated recommendations and AI insights
-        - Agent review comments and modifications
-        - Report generation settings and preferences
+            **Session Recovery:**
+            - Automatic detection of previous session data
+            - Seamless restoration of workflow progress
+            - Preservation of analysis results across browser sessions
+            - Recovery of AI-generated insights and recommendations
 
-        **Session Recovery:**
-        - Automatic detection of previous session data
-        - Seamless restoration of workflow progress
-        - Preservation of analysis results across browser sessions
-        - Recovery of AI-generated insights and recommendations
+            **Manual Session Management:**
+            - **Reset Session**: Clear all data to start fresh analysis
+            - **Session Status**: View current session information and backup status
+            - **Export Session**: Download complete session data for records
+            """)
 
-        **Manual Session Management:**
-        - **Reset Session**: Clear all data to start fresh analysis
-        - **Session Status**: View current session information and backup status
-        - **Export Session**: Download complete session data for records
-        """)
+        with col2:
+            st.info("""
+            **Session Features:**
+            - Automatic backup system
+            - Cross-tab data persistence
+            - Browser refresh recovery
+            - Progress tracking
+            - Data integrity protection
 
-    with col2:
-        st.info("""
-        **Session Features:**
-        - Automatic backup system
-        - Cross-tab data persistence
-        - Browser refresh recovery
-        - Progress tracking
-        - Data integrity protection
-
-        **Persistence Includes:**
-        - Customer profiles
-        - Market data uploads
-        - AI recommendations
-        - Agent modifications
-        - Report settings
-        """)
-
-    st.markdown("---")
+            **Persistence Includes:**
+            - Customer profiles
+            - Market data uploads
+            - AI recommendations
+            - Agent modifications
+            - Report settings
+            """)
 
     # Best practices
-    st.markdown("## Best Practices for Property Professionals")
+    with st.expander("## 🎯 Best Practices for Property Professionals", expanded=False):
+        col1, col2 = st.columns(2)
 
-    col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("""
+            **Data Quality Management:**
+            - Always validate imported data before analysis
+            - Use multiple data sources when possible
+            - Keep market data updated regularly
+            - Cross-reference AI recommendations with current listings
 
-    with col1:
-        st.markdown("""
-        **Data Quality Management:**
-        - Always validate imported data before analysis
-        - Use multiple data sources when possible
-        - Keep market data updated regularly
-        - Cross-reference AI recommendations with current listings
+            **Client Communication:**
+            - Present recommendations in context of client goals
+            - Explain methodology and data sources clearly
+            - Highlight both opportunities and risks transparently
+            - Provide clear next steps and action items
 
-        **Client Communication:**
-        - Present recommendations in context of client goals
-        - Explain methodology and data sources clearly
-        - Highlight both opportunities and risks transparently
-        - Provide clear next steps and action items
+            **Professional Development:**
+            - Stay updated on platform features and improvements
+            - Regularly review and refine your analysis approach
+            - Build a library of successful case studies
+            - Continuously improve your local market knowledge
+            """)
 
-        **Professional Development:**
-        - Stay updated on platform features and improvements
-        - Regularly review and refine your analysis approach
-        - Build a library of successful case studies
-        - Continuously improve your local market knowledge
-        """)
+        with col2:
+            st.markdown("""
+            **Analysis Accuracy:**
+            - Always apply local market knowledge to AI recommendations
+            - Consider factors not captured in data (noise, traffic, future development)
+            - Validate suburb boundaries and postcodes
+            - Account for seasonal market variations
 
-    with col2:
-        st.markdown("""
-        **Analysis Accuracy:**
-        - Always apply local market knowledge to AI recommendations
-        - Consider factors not captured in data (noise, traffic, future development)
-        - Validate suburb boundaries and postcodes
-        - Account for seasonal market variations
+            **Risk Management:**
+            - Always discuss investment risks with clients
+            - Consider multiple scenarios (best case, worst case, most likely)
+            - Keep detailed records of analysis and recommendations
+            - Regularly review and update investment strategies
 
-        **Risk Management:**
-        - Always discuss investment risks with clients
-        - Consider multiple scenarios (best case, worst case, most likely)
-        - Keep detailed records of analysis and recommendations
-        - Regularly review and update investment strategies
-
-        **Competitive Advantage:**
-        - Use the platform to provide faster, more comprehensive analysis
-        - Combine AI insights with your professional expertise
-        - Offer clients data-driven, professional presentations
-        - Build reputation for thorough, analytical approach
-        """)
-
-    st.markdown("---")
+            **Competitive Advantage:**
+            - Use the platform to provide faster, more comprehensive analysis
+            - Combine AI insights with your professional expertise
+            - Offer clients data-driven, professional presentations
+            - Build reputation for thorough, analytical approach
+            """)
 
     # Troubleshooting
-    st.markdown("## Common Questions & Troubleshooting")
+    with st.expander("## ❓ Common Questions & Troubleshooting", expanded=False):
+        with st.expander("Data Import Issues"):
+            st.markdown("""
+            **Problem**: "My CSV file won't upload properly"
+            **Solution**: Ensure your CSV file has proper headers and is saved in UTF-8 encoding. Check that suburb names match standard formats.
 
-    with st.expander("Data Import Issues"):
-        st.markdown("""
-        **Problem**: "My CSV file won't upload properly"
-        **Solution**: Ensure your CSV file has proper headers and is saved in UTF-8 encoding. Check that suburb names match standard formats.
+            **Problem**: "Some suburbs are missing from my analysis"
+            **Solution**: Check for spelling variations in suburb names. The system will attempt to match similar names but may need manual correction.
 
-        **Problem**: "Some suburbs are missing from my analysis"
-        **Solution**: Check for spelling variations in suburb names. The system will attempt to match similar names but may need manual correction.
+            **Problem**: "HtAG data integration is not working"
+            **Solution**: Verify you have the correct HtAG file format. Contact support if you need help with specific data source integration.
+            """)
 
-        **Problem**: "HtAG data integration is not working"
-        **Solution**: Verify you have the correct HtAG file format. Contact support if you need help with specific data source integration.
-        """)
+        with st.expander("Session & Navigation Issues"):
+            st.markdown("""
+            **Problem**: "I lost my progress when switching tabs"
+            **Solution**: The platform now automatically saves progress. If you experience issues, check the session status in the workflow progress bar.
 
-    with st.expander("Session & Navigation Issues"):
-        st.markdown("""
-        **Problem**: "I lost my progress when switching tabs"
-        **Solution**: The platform now automatically saves progress. If you experience issues, check the session status in the workflow progress bar.
+            **Problem**: "My recommendations disappeared"
+            **Solution**: Use the session recovery system - the platform automatically backs up your data. Check the 'Detailed Investment Insights' tab to verify recommendations are available.
 
-        **Problem**: "My recommendations disappeared"
-        **Solution**: Use the session recovery system - the platform automatically backs up your data. Check the 'Detailed Investment Insights' tab to verify recommendations are available.
+            **Problem**: "Agent Review shows 'No recommendations available'"
+            **Solution**: Ensure you've completed the AI recommendation step first. The system now includes session recovery to restore missing data.
 
-        **Problem**: "Agent Review shows 'No recommendations available'"
-        **Solution**: Ensure you've completed the AI recommendation step first. The system now includes session recovery to restore missing data.
+            **Problem**: "PDF generation is not working"
+            **Solution**: The PDF generation system has been fully implemented. Ensure your analysis is complete and try the 'Generate PDF Report' button in the Reports tab.
+            """)
 
-        **Problem**: "PDF generation is not working"
-        **Solution**: The PDF generation system has been fully implemented. Ensure your analysis is complete and try the 'Generate PDF Report' button in the Reports tab.
-        """)
+        with st.expander("Analysis & Scoring Questions"):
+            st.markdown("""
+            **Question**: "Why are the suburb scores different from my expectations?"
+            **Answer**: Scoring is based on objective data analysis. Your local knowledge is valuable - use the Agent Review step to adjust scores and add professional insights.
 
-    with st.expander("Analysis & Scoring Questions"):
-        st.markdown("""
-        **Question**: "Why are the suburb scores different from my expectations?"
-        **Answer**: Scoring is based on objective data analysis. Your local knowledge is valuable - use the Agent Review step to adjust scores and add professional insights.
+            **Question**: "Can I change the scoring weights for different criteria?"
+            **Answer**: Yes, you can adjust weights for growth potential, rental yield, risk factors, and client fit in the analysis settings.
 
-        **Question**: "Can I change the scoring weights for different criteria?"
-        **Answer**: Yes, you can adjust weights for growth potential, rental yield, risk factors, and client fit in the analysis settings.
+            **Question**: "How current is the market data used in analysis?"
+            **Answer**: Data currency depends on your source. HtAG data is typically updated quarterly, while other sources may vary. Always check data dates before presenting to clients.
 
-        **Question**: "How current is the market data used in analysis?"
-        **Answer**: Data currency depends on your source. HtAG data is typically updated quarterly, while other sources may vary. Always check data dates before presenting to clients.
+            **Question**: "How do I change the number of recommended suburbs?"
+            **Answer**: Use the prominent slider in the 'AI Recommendations' and 'Detailed Investment Insights' tabs to select between 5-20 suburbs. This helps tailor the analysis to your client's decision-making capacity.
 
-        **Question**: "How do I change the number of recommended suburbs?"
-        **Answer**: Use the prominent slider in the 'AI Recommendations' and 'Detailed Investment Insights' tabs to select between 5-20 suburbs. This helps tailor the analysis to your client's decision-making capacity.
+            **Question**: "Which recommendation engine was used for my analysis?"
+            **Answer**: Check the engine type displayed in the recommendations. AI/GenAI is primary, with Rule-Based as fallback. Export filenames also indicate the engine used (e.g., 'ai_genai_recommendations.csv').
+            """)
 
-        **Question**: "Which recommendation engine was used for my analysis?"
-        **Answer**: Check the engine type displayed in the recommendations. AI/GenAI is primary, with Rule-Based as fallback. Export filenames also indicate the engine used (e.g., 'ai_genai_recommendations.csv').
-        """)
+        with st.expander("Client Presentation Tips"):
+            st.markdown("""
+            **Tip**: "Always explain your methodology to clients - it builds confidence in your recommendations"
 
-    with st.expander("Client Presentation Tips"):
-        st.markdown("""
-        **Tip**: "Always explain your methodology to clients - it builds confidence in your recommendations"
+            **Tip**: "Use the interactive features during client meetings to explore alternative scenarios in real-time"
 
-        **Tip**: "Use the interactive features during client meetings to explore alternative scenarios in real-time"
+            **Tip**: "Combine the generated reports with your local market knowledge for the most compelling presentations"
 
-        **Tip**: "Combine the generated reports with your local market knowledge for the most compelling presentations"
-
-        **Tip**: "Keep clients engaged by explaining both the data insights and your professional interpretation"
-        """)
-
-    st.markdown("---")
+            **Tip**: "Keep clients engaged by explaining both the data insights and your professional interpretation"
+            """)
 
     # Support section
-    st.markdown("## Support & Training")
+    with st.expander("## 🆘 Support & Training", expanded=False):
+        col1, col2 = st.columns(2)
 
-    col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("""
+            **Getting Help:**
+            - Use the AI Assistant for immediate analysis questions
+            - Contact support for technical issues
+            - Join our professional user community for tips and insights
+            - Access video tutorials and webinars
 
-    with col1:
-        st.markdown("""
-        **Getting Help:**
-        - Use the AI Assistant for immediate analysis questions
-        - Contact support for technical issues
-        - Join our professional user community for tips and insights
-        - Access video tutorials and webinars
+            **Training Resources:**
+            - Platform walkthrough videos
+            - Best practices webinars
+            - Property analysis methodology guides
+            - Sample client case studies
+            """)
 
-        **Training Resources:**
-        - Platform walkthrough videos
-        - Best practices webinars
-        - Property analysis methodology guides
-        - Sample client case studies
-        """)
+        with col2:
+            st.markdown("""
+            **Contact Information:**
+            - Email: support@propertyinsight.com
+            - Training: training@propertyinsight.com
+            - Technical Support: Available Monday-Friday 9AM-5PM
 
-    with col2:
-        st.markdown("""
-        **Contact Information:**
-        - Email: support@propertyinsight.com
-        - Training: training@propertyinsight.com
-        - Technical Support: Available Monday-Friday 9AM-5PM
-
-        **Additional Resources:**
-        - User manual and documentation
-        - Video tutorial library
-        - Professional development courses
-        - Industry insights and market reports
-        """)
+            **Additional Resources:**
+            - User manual and documentation
+            - Video tutorial library
+            - Professional development courses
+            - Industry insights and market reports
+            """)
 
     # Call to action
     st.markdown("---")
