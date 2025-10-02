@@ -194,17 +194,18 @@ def render_clean_sidebar():
                 st.session_state.current_page = page_key
                 st.rerun()
 
-        # Workflow status - minimal design (4-step workflow)
+        # Workflow status - minimal design (5-step workflow)
         st.markdown("---")
         st.markdown("**Workflow Status**")
 
         workflow_step = st.session_state.get('workflow_step', 1)
 
         steps = [
-            ("1. Customer Profile", st.session_state.get('profile_generated', False), 'customer_profile', 1),
+            ("1. Client Profile", st.session_state.get('profile_generated', False), 'customer_profile', 1),
             ("2. Data Import", st.session_state.get('data_uploaded', False), 'data_upload', 2),
             ("3. Analysis & Recommendations", st.session_state.get('recommendations') is not None, 'recommendations', 3),
-            ("4. Final Report", st.session_state.get('final_report') is not None, 'reports', 4)
+            ("4. Agent Review", st.session_state.get('agent_notes') is not None and len(st.session_state.get('agent_notes', {})) > 0, 'agent_review', 4),
+            ("5. Final Report", st.session_state.get('final_report') is not None, 'reports', 5)
         ]
 
         for step_name, is_complete, page_key, step_num in steps:

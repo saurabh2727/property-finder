@@ -197,10 +197,15 @@ Please provide more specific information about your client's preferences, financ
             }]
 
         # Display chat history with clean design
-        for message in st.session_state.chat_history:
+        for idx, message in enumerate(st.session_state.chat_history):
             if message['role'] == 'assistant':
                 with st.chat_message("assistant"):
-                    st.markdown(message['content'])
+                    # Make first welcome message collapsible
+                    if idx == 0 and "As an AI assistant" in message['content']:
+                        with st.expander("ℹ️ **How I can help** (click to expand)", expanded=False):
+                            st.markdown(message['content'])
+                    else:
+                        st.markdown(message['content'])
             else:
                 with st.chat_message("user"):
                     st.markdown(message['content'])
