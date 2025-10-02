@@ -32,472 +32,460 @@ def render_user_guide_page():
     st.markdown("## Complete Workflow Guide")
 
     # Step 1
-    st.markdown("### Step 1: Customer Profiling")
+    with st.expander("### 👤 Step 1: Customer Profiling", expanded=False):
+        col1, col2 = st.columns([2, 1])
 
-    col1, col2 = st.columns([2, 1])
+        with col1:
+            st.markdown("""
+            **Purpose**: Create a comprehensive profile of your client's investment goals, financial capacity, and preferences.
 
-    with col1:
-        st.markdown("""
-        **Purpose**: Create a comprehensive profile of your client's investment goals, financial capacity, and preferences.
+            **What You'll Do:**
+            - **Option 1**: Upload client discovery questionnaires (PDF/Word/TXT documents) and click "🤖 Analyze Document"
+            - **Option 2**: Click "✏️ Enter Manually" to use our guided form
+            - **Option 3**: Click "⚡ Load Sample Profile" to test the platform with pre-filled data
+            - Define investment budget and financial constraints
+            - Set investment timeline and goals (capital growth vs rental yield)
+            - Specify location preferences and property types
+            - **Edit Profile**: After generation, click "📝 Edit Profile" to make changes
 
-        **What You'll Do:**
-        - **Option 1**: Upload client discovery questionnaires (PDF/Word/TXT documents) and click "🤖 Analyze Document"
-        - **Option 2**: Click "✏️ Enter Manually" to use our guided form
-        - **Option 3**: Click "⚡ Load Sample Profile" to test the platform with pre-filled data
-        - Define investment budget and financial constraints
-        - Set investment timeline and goals (capital growth vs rental yield)
-        - Specify location preferences and property types
-        - **Edit Profile**: After generation, click "📝 Edit Profile" to make changes
+            **What the System Does:**
+            - Automatically extracts key information from uploaded documents using AI
+            - Validates and structures client data for analysis
+            - Creates investment criteria profiles
+            - Establishes filtering parameters for suburb selection
 
-        **What the System Does:**
-        - Automatically extracts key information from uploaded documents using AI
-        - Validates and structures client data for analysis
-        - Creates investment criteria profiles
-        - Establishes filtering parameters for suburb selection
+            **Professional Tip**: The more detailed your client profile, the more targeted and relevant your recommendations will be. Include specific location preferences, risk tolerance, and any special requirements.
+            """)
 
-        **Professional Tip**: The more detailed your client profile, the more targeted and relevant your recommendations will be. Include specific location preferences, risk tolerance, and any special requirements.
-        """)
-
-    with col2:
-        st.info("""
-        **Required Information:**
-        - Investment budget range
-        - Preferred locations/regions
-        - Property type preferences
-        - Investment timeline
-        - Risk tolerance level
-        - Rental yield vs growth priority
-        """)
-
-    st.markdown("---")
+        with col2:
+            st.info("""
+            **Required Information:**
+            - Investment budget range
+            - Preferred locations/regions
+            - Property type preferences
+            - Investment timeline
+            - Risk tolerance level
+            - Rental yield vs growth priority
+            """)
 
     # Step 2
-    st.markdown("### Step 2: Market Data Import")
+    with st.expander("### 📊 Step 2: Market Data Import", expanded=False):
+        col1, col2 = st.columns([2, 1])
 
-    col1, col2 = st.columns([2, 1])
+        with col1:
+            st.markdown("""
+            **Purpose**: Import comprehensive market data to enable accurate suburb analysis and scoring.
 
-    with col1:
-        st.markdown("""
-        **Purpose**: Import comprehensive market data to enable accurate suburb analysis and scoring.
+            **Data Sources Supported:**
+            - **HtAG Data**: Premium suburb performance metrics and forecasts
+            - **DSR Data**: Demand to Supply Ratio analysis
+            - **Suburb Finder**: Comparative market analysis
+            - **Custom CSV/Excel**: Your own market research data
+            - **API Integrations**: Real-time market feeds
 
-        **Data Sources Supported:**
-        - **HtAG Data**: Premium suburb performance metrics and forecasts
-        - **DSR Data**: Demand to Supply Ratio analysis
-        - **Suburb Finder**: Comparative market analysis
-        - **Custom CSV/Excel**: Your own market research data
-        - **API Integrations**: Real-time market feeds
+            **What You'll Do:**
+            - Select your preferred data source
+            - Upload data files or connect to APIs
+            - Map data columns to platform requirements
+            - Validate data quality and completeness
 
-        **What You'll Do:**
-        - Select your preferred data source
-        - Upload data files or connect to APIs
-        - Map data columns to platform requirements
-        - Validate data quality and completeness
+            **What the System Does:**
+            - Automatically detects file formats and headers
+            - Validates data quality and identifies missing information
+            - Standardizes suburb names and postcodes
+            - Calculates derived metrics (growth rates, yield ratios)
+            - Stores data for immediate analysis
 
-        **What the System Does:**
-        - Automatically detects file formats and headers
-        - Validates data quality and identifies missing information
-        - Standardizes suburb names and postcodes
-        - Calculates derived metrics (growth rates, yield ratios)
-        - Stores data for immediate analysis
+            **Data Quality Check**: The system will highlight any missing or inconsistent data and suggest corrections before proceeding to analysis.
+            """)
 
-        **Data Quality Check**: The system will highlight any missing or inconsistent data and suggest corrections before proceeding to analysis.
-        """)
-
-    with col2:
-        st.warning("""
-        **Data Requirements:**
-        - Suburb names and postcodes
-        - Median property values
-        - Rental yields
-        - Historical growth rates
-        - Market indicators
-        - Population demographics
-        """)
-
-    st.markdown("---")
+        with col2:
+            st.warning("""
+            **Data Requirements:**
+            - Suburb names and postcodes
+            - Median property values
+            - Rental yields
+            - Historical growth rates
+            - Market indicators
+            - Population demographics
+            """)
 
     # Step 3
-    st.markdown("### Step 3: Market Analysis & Suburb Scoring")
+    with st.expander("### 📈 Step 3: Market Analysis & Suburb Scoring", expanded=False):
 
-    col1, col2 = st.columns([2, 1])
+        col1, col2 = st.columns([2, 1])
 
-    with col1:
-        st.markdown("""
-        **Purpose**: Automatically analyze suburbs against client criteria and generate investment scores.
+        with col1:
+            st.markdown("""
+            **Purpose**: Automatically analyze suburbs against client criteria and generate investment scores.
 
-        **Analysis Components:**
+            **Analysis Components:**
 
-        **Growth Potential Scoring (35% weight)**
-        - Historical capital growth trends
-        - Infrastructure development plans
-        - Population growth projections
-        - Economic indicators and employment growth
+            **Growth Potential Scoring (35% weight)**
+            - Historical capital growth trends
+            - Infrastructure development plans
+            - Population growth projections
+            - Economic indicators and employment growth
 
-        **Rental Yield Analysis (30% weight)**
-        - Current gross and net rental yields
-        - Rental growth trends
-        - Vacancy rates and rental demand
-        - Property management costs
+            **Rental Yield Analysis (30% weight)**
+            - Current gross and net rental yields
+            - Rental growth trends
+            - Vacancy rates and rental demand
+            - Property management costs
 
-        **Risk Assessment (25% weight)**
-        - Market volatility measures
-        - Economic dependency analysis
-        - Natural disaster risk factors
-        - Market oversupply indicators
+            **Risk Assessment (25% weight)**
+            - Market volatility measures
+            - Economic dependency analysis
+            - Natural disaster risk factors
+            - Market oversupply indicators
 
-        **Client Fit Scoring (10% weight)**
-        - Budget alignment with median prices
-        - Location preference matching
-        - Property type availability
-        - Investment timeline suitability
+            **Client Fit Scoring (10% weight)**
+            - Budget alignment with median prices
+            - Location preference matching
+            - Property type availability
+            - Investment timeline suitability
 
-        **What You'll Do:**
-        - Review and adjust scoring weights if needed
-        - Set minimum thresholds for each criterion
-        - Apply any additional filters (distance, amenities)
+            **What You'll Do:**
+            - Review and adjust scoring weights if needed
+            - Set minimum thresholds for each criterion
+            - Apply any additional filters (distance, amenities)
 
-        **What the System Does:**
-        - Calculates comprehensive scores for each suburb
-        - Ranks suburbs based on total weighted scores
-        - Identifies top investment opportunities
-        - Highlights potential risks and opportunities
-        """)
+            **What the System Does:**
+            - Calculates comprehensive scores for each suburb
+            - Ranks suburbs based on total weighted scores
+            - Identifies top investment opportunities
+            - Highlights potential risks and opportunities
+            """)
 
-    with col2:
-        st.success("""
-        **Scoring Metrics:**
-        - Overall Investment Score (0-100)
-        - Growth Potential Score
-        - Rental Yield Score
-        - Risk Assessment Score
-        - Client Fit Score
+        with col2:
+            st.success("""
+            **Scoring Metrics:**
+            - Overall Investment Score (0-100)
+            - Growth Potential Score
+            - Rental Yield Score
+            - Risk Assessment Score
+            - Client Fit Score
 
-        **Output:**
-        - Ranked suburb list
-        - Detailed scorecards
-        - Comparative analysis
-        """)
+            **Output:**
+            - Ranked suburb list
+            - Detailed scorecards
+            - Comparative analysis
+            """)
 
-    st.markdown("---")
 
     # Step 4
-    st.markdown("### Step 4: AI-Powered Recommendations")
+    with st.expander("### 🤖 Step 4: AI-Powered Recommendations", expanded=False):
 
-    col1, col2 = st.columns([2, 1])
+        col1, col2 = st.columns([2, 1])
 
-    with col1:
-        st.markdown("""
-        **Purpose**: Generate intelligent, contextual investment recommendations using advanced AI/GenAI analysis.
+        with col1:
+            st.markdown("""
+            **Purpose**: Generate intelligent, contextual investment recommendations using advanced AI/GenAI analysis.
 
-        **Multi-Engine Recommendation System:**
+            **Multi-Engine Recommendation System:**
 
-        **🤖 Primary: AI/GenAI Engine (OpenAI GPT-4)**
-        - Natural language processing of customer profiles
-        - Contextual analysis of market data and trends
-        - Intelligent suburb matching based on client goals
-        - Generates personalized investment strategies
-        - Provides detailed reasoning for each recommendation
+            **🤖 Primary: AI/GenAI Engine (OpenAI GPT-4)**
+            - Natural language processing of customer profiles
+            - Contextual analysis of market data and trends
+            - Intelligent suburb matching based on client goals
+            - Generates personalized investment strategies
+            - Provides detailed reasoning for each recommendation
 
-        **📊 Fallback: Rule-Based Engine**
-        - Mathematical scoring algorithms
-        - Weighted criteria analysis (growth, yield, risk, fit)
-        - Automated when AI engine is unavailable
-        - Ensures system reliability and consistency
+            **📊 Fallback: Rule-Based Engine**
+            - Mathematical scoring algorithms
+            - Weighted criteria analysis (growth, yield, risk, fit)
+            - Automated when AI engine is unavailable
+            - Ensures system reliability and consistency
 
-        **🧠 Additional: ML Engine (Optional)**
-        - Machine learning models with feature importance
-        - SHAP explainability for model interpretability
-        - Advanced analytics and insights
+            **🧠 Additional: ML Engine (Optional)**
+            - Machine learning models with feature importance
+            - SHAP explainability for model interpretability
+            - Advanced analytics and insights
 
-        **Recommendation Output:**
+            **Recommendation Output:**
 
-        **Primary Recommendations**
-        - Top-ranked suburbs based on client criteria
-        - Detailed investment rationale and scoring
-        - Expected returns and risk assessments
-        - Location preferences and budget alignment
+            **Primary Recommendations**
+            - Top-ranked suburbs based on client criteria
+            - Detailed investment rationale and scoring
+            - Expected returns and risk assessments
+            - Location preferences and budget alignment
 
-        **Export Options:**
-        - `ai_genai_recommendations.csv` (when AI used)
-        - `rule_based_recommendations.csv` (when fallback used)
-        - `ai_analysis.json` (detailed AI insights)
-        - **Dynamic filename generation** based on actual engine used
-        - **Professional PDF reports** with comprehensive analysis and charts
+            **Export Options:**
+            - `ai_genai_recommendations.csv` (when AI used)
+            - `rule_based_recommendations.csv` (when fallback used)
+            - `ai_analysis.json` (detailed AI insights)
+            - **Dynamic filename generation** based on actual engine used
+            - **Professional PDF reports** with comprehensive analysis and charts
 
-        **Suburb Count Configuration:**
-        - Prominently displayed slider to select 5-20 suburbs
-        - Real-time adjustment of recommendation scope
-        - Helps tailor analysis to client's decision-making capacity
+            **Suburb Count Configuration:**
+            - Prominently displayed slider to select 5-20 suburbs
+            - Real-time adjustment of recommendation scope
+            - Helps tailor analysis to client's decision-making capacity
 
-        **What You'll Review:**
-        - Engine type used for recommendations
-        - AI-generated suburb recommendations and reasoning
-        - Investment rationale and supporting data
-        - Risk assessments and market timing advice
-        - Projected returns and cash flow analysis
-        """)
+            **What You'll Review:**
+            - Engine type used for recommendations
+            - AI-generated suburb recommendations and reasoning
+            - Investment rationale and supporting data
+            - Risk assessments and market timing advice
+            - Projected returns and cash flow analysis
+            """)
 
-    with col2:
-        st.info("""
-        **System Features:**
-        - Multi-engine architecture
-        - Automatic fallback mechanisms
-        - Engine transparency
-        - Accurate export naming
+        with col2:
+            st.info("""
+            **System Features:**
+            - Multi-engine architecture
+            - Automatic fallback mechanisms
+            - Engine transparency
+            - Accurate export naming
 
-        **AI/GenAI Considers:**
-        - Client investment goals
-        - Risk tolerance
-        - Budget constraints
-        - Preferred locations
-        - Market trends
-        - Economic indicators
+            **AI/GenAI Considers:**
+            - Client investment goals
+            - Risk tolerance
+            - Budget constraints
+            - Preferred locations
+            - Market trends
+            - Economic indicators
 
-        **Outputs:**
-        - Engine-specific filenames
-        - Ranked recommendations
-        - Investment rationale
-        - Risk assessments
-        - Return projections
-        """)
+            **Outputs:**
+            - Engine-specific filenames
+            - Ranked recommendations
+            - Investment rationale
+            - Risk assessments
+            - Return projections
+            """)
 
-    st.markdown("---")
 
     # Step 5
-    st.markdown("### Step 5: Agent Review & Validation")
+    with st.expander("### ✅ Step 5: Agent Review & Validation", expanded=False):
 
-    col1, col2 = st.columns([2, 1])
+        col1, col2 = st.columns([2, 1])
 
-    with col1:
-        st.markdown("""
-        **Purpose**: Apply your professional expertise to validate and enhance AI recommendations.
+        with col1:
+            st.markdown("""
+            **Purpose**: Apply your professional expertise to validate and enhance AI recommendations.
 
-        **Your Professional Review:**
+            **Your Professional Review:**
 
-        **Validate Recommendations**
-        - Review AI-generated suburb rankings
-        - Check recommendations against local market knowledge
-        - Verify data accuracy and currency
-        - Assess practical considerations (transport, schools, amenities)
+            **Validate Recommendations**
+            - Review AI-generated suburb rankings
+            - Check recommendations against local market knowledge
+            - Verify data accuracy and currency
+            - Assess practical considerations (transport, schools, amenities)
 
-        **Add Professional Insights**
-        - Include local market intelligence
-        - Add knowledge of upcoming developments
-        - Consider client-specific factors
-        - Note any special considerations or risks
+            **Add Professional Insights**
+            - Include local market intelligence
+            - Add knowledge of upcoming developments
+            - Consider client-specific factors
+            - Note any special considerations or risks
 
-        **Adjust Scoring Weights**
-        - Modify scoring criteria based on client feedback
-        - Adjust for market conditions or timing
-        - Incorporate any new client requirements
+            **Adjust Scoring Weights**
+            - Modify scoring criteria based on client feedback
+            - Adjust for market conditions or timing
+            - Incorporate any new client requirements
 
-        **Quality Assurance**
-        - Ensure recommendations align with client goals
-        - Verify all supporting data and calculations
-        - Check for any obvious issues or oversights
+            **Quality Assurance**
+            - Ensure recommendations align with client goals
+            - Verify all supporting data and calculations
+            - Check for any obvious issues or oversights
 
-        **What You Can Modify:**
-        - Suburb rankings and scores
-        - Investment rationale and comments
-        - Risk assessments and warnings
-        - Recommendation priorities
+            **What You Can Modify:**
+            - Suburb rankings and scores
+            - Investment rationale and comments
+            - Risk assessments and warnings
+            - Recommendation priorities
 
-        **Professional Notes**: Add your own insights, local knowledge, and specific advice that only an experienced property professional would know.
-        """)
+            **Professional Notes**: Add your own insights, local knowledge, and specific advice that only an experienced property professional would know.
+            """)
 
-    with col2:
-        st.warning("""
-        **Review Checklist:**
-        - Data accuracy validation
-        - Local market alignment
-        - Client goal matching
-        - Risk factor assessment
-        - Practical considerations
-        - Professional insights added
-        """)
+        with col2:
+            st.warning("""
+            **Review Checklist:**
+            - Data accuracy validation
+            - Local market alignment
+            - Client goal matching
+            - Risk factor assessment
+            - Practical considerations
+            - Professional insights added
+            """)
 
-    st.markdown("---")
 
     # Step 5.5
-    st.markdown("### Step 5.5: Detailed Investment Insights")
+    with st.expander("### 💡 Step 5.5: Detailed Investment Insights", expanded=False):
 
-    col1, col2 = st.columns([2, 1])
+        col1, col2 = st.columns([2, 1])
 
-    with col1:
-        st.markdown("""
-        **Purpose**: Access comprehensive analytics and detailed insights for your recommended suburbs.
+        with col1:
+            st.markdown("""
+            **Purpose**: Access comprehensive analytics and detailed insights for your recommended suburbs.
 
-        **Enhanced Analytics Dashboard:**
-        - **Market Overview**: AI-generated insights about market conditions and trends
-        - **Performance Metrics**: Growth rates, rental yields, and risk assessments
-        - **Comparative Analysis**: Side-by-side suburb comparisons with detailed charts
-        - **Investment Projections**: Expected returns and cash flow analysis
-        - **Risk Assessment**: Detailed risk factors and mitigation strategies
+            **Enhanced Analytics Dashboard:**
+            - **Market Overview**: AI-generated insights about market conditions and trends
+            - **Performance Metrics**: Growth rates, rental yields, and risk assessments
+            - **Comparative Analysis**: Side-by-side suburb comparisons with detailed charts
+            - **Investment Projections**: Expected returns and cash flow analysis
+            - **Risk Assessment**: Detailed risk factors and mitigation strategies
 
-        **Interactive Features:**
-        - **Suburb Count Configuration**: Adjust recommendations from 5-20 suburbs
-        - **Dynamic Charts**: Interactive visualizations with Plotly
-        - **AI Reasoning**: Detailed explanations for each recommendation
-        - **Market Indicators**: Real-time market health assessments
+            **Interactive Features:**
+            - **Suburb Count Configuration**: Adjust recommendations from 5-20 suburbs
+            - **Dynamic Charts**: Interactive visualizations with Plotly
+            - **AI Reasoning**: Detailed explanations for each recommendation
+            - **Market Indicators**: Real-time market health assessments
 
-        **Professional Analytics:**
-        - Growth potential vs rental yield scatter plots
-        - Market performance trending analysis
-        - Risk-return optimization charts
-        - Suburb ranking visualizations with scores
+            **Professional Analytics:**
+            - Growth potential vs rental yield scatter plots
+            - Market performance trending analysis
+            - Risk-return optimization charts
+            - Suburb ranking visualizations with scores
 
-        **What You'll See:**
-        - Engine type used (AI/GenAI, Rule-Based, or ML)
-        - Comprehensive suburb analytics and reasoning
-        - Professional charts and visualizations
-        - Exportable data for client presentations
-        """)
+            **What You'll See:**
+            - Engine type used (AI/GenAI, Rule-Based, or ML)
+            - Comprehensive suburb analytics and reasoning
+            - Professional charts and visualizations
+            - Exportable data for client presentations
+            """)
 
-    with col2:
-        st.success("""
-        **Key Features:**
-        - AI-powered market insights
-        - Interactive suburb configuration
-        - Professional visualizations
-        - Comprehensive analytics
-        - Export-ready charts
+        with col2:
+            st.success("""
+            **Key Features:**
+            - AI-powered market insights
+            - Interactive suburb configuration
+            - Professional visualizations
+            - Comprehensive analytics
+            - Export-ready charts
 
-        **Analytics Include:**
-        - Market overview
-        - Performance metrics
-        - Risk assessments
-        - Investment projections
-        - Comparative analysis
-        """)
+            **Analytics Include:**
+            - Market overview
+            - Performance metrics
+            - Risk assessments
+            - Investment projections
+            - Comparative analysis
+            """)
 
-    st.markdown("---")
 
     # Step 6
-    st.markdown("### Step 6: Professional Report Generation")
+    with st.expander("### 📄 Step 6: Professional Report Generation", expanded=False):
 
-    col1, col2 = st.columns([2, 1])
+        col1, col2 = st.columns([2, 1])
 
-    with col1:
-        st.markdown("""
-        **Purpose**: Generate comprehensive, professional reports for client presentation and decision-making.
+        with col1:
+            st.markdown("""
+            **Purpose**: Generate comprehensive, professional reports for client presentation and decision-making.
 
-        **Report Components:**
+            **Report Components:**
 
-        **Executive Summary**
-        - Investment recommendations overview
-        - Key findings and opportunities
-        - Risk assessment summary
-        - Next steps and action items
+            **Executive Summary**
+            - Investment recommendations overview
+            - Key findings and opportunities
+            - Risk assessment summary
+            - Next steps and action items
 
-        **Client Profile Summary**
-        - Investment goals and criteria
-        - Budget and timeline parameters
-        - Risk tolerance and preferences
+            **Client Profile Summary**
+            - Investment goals and criteria
+            - Budget and timeline parameters
+            - Risk tolerance and preferences
 
-        **Market Analysis**
-        - Suburb ranking and scoring details
-        - Comparative market analysis
-        - Growth potential assessments
-        - Rental yield analysis
+            **Market Analysis**
+            - Suburb ranking and scoring details
+            - Comparative market analysis
+            - Growth potential assessments
+            - Rental yield analysis
 
-        **Investment Recommendations**
-        - Top suburb recommendations with detailed rationale
-        - Expected returns and cash flow projections
-        - Risk factors and mitigation strategies
-        - Investment timeline and strategy
+            **Investment Recommendations**
+            - Top suburb recommendations with detailed rationale
+            - Expected returns and cash flow projections
+            - Risk factors and mitigation strategies
+            - Investment timeline and strategy
 
-        **Supporting Data**
-        - Market statistics and trends
-        - Property listings and examples
-        - Financial projections and scenarios
-        - Maps and location analysis
+            **Supporting Data**
+            - Market statistics and trends
+            - Property listings and examples
+            - Financial projections and scenarios
+            - Maps and location analysis
 
-        **Professional Insights**
-        - Agent commentary and recommendations
-        - Local market knowledge and tips
-        - Strategic advice and next steps
+            **Professional Insights**
+            - Agent commentary and recommendations
+            - Local market knowledge and tips
+            - Strategic advice and next steps
 
-        **Enhanced Report Generation:**
+            **Enhanced Report Generation:**
 
-        **Professional PDF Reports (Implemented)**
-        - **Executive Summary** with key findings and recommendations
-        - **Client Profile** section with investment criteria
-        - **Market Analysis** with suburb rankings and detailed insights
-        - **Investment Recommendations** with AI-generated rationale
-        - **Supporting Charts** including growth potential vs rental yield plots
-        - **Risk Assessment** with detailed factor analysis
-        - **Professional Formatting** with consistent styling and branding
+            **Professional PDF Reports (Implemented)**
+            - **Executive Summary** with key findings and recommendations
+            - **Client Profile** section with investment criteria
+            - **Market Analysis** with suburb rankings and detailed insights
+            - **Investment Recommendations** with AI-generated rationale
+            - **Supporting Charts** including growth potential vs rental yield plots
+            - **Risk Assessment** with detailed factor analysis
+            - **Professional Formatting** with consistent styling and branding
 
-        **Multiple Export Formats:**
-        - **PDF Reports**: Presentation-ready documents for client meetings
-        - **CSV Data**: Detailed suburb data and recommendations
-        - **JSON Insights**: AI analysis and reasoning data
-        - **Excel Integration**: Compatible with further analysis tools
+            **Multiple Export Formats:**
+            - **PDF Reports**: Presentation-ready documents for client meetings
+            - **CSV Data**: Detailed suburb data and recommendations
+            - **JSON Insights**: AI analysis and reasoning data
+            - **Excel Integration**: Compatible with further analysis tools
 
-        **Save Report Functionality:**
-        - **Dynamic Filenames**: Automatically named based on engine used
-        - **Timestamp Integration**: Reports include generation date/time
-        - **Session Recovery**: Reports persist across browser sessions
-        - **Multiple Download Options**: Choose format based on use case
-        """)
+            **Save Report Functionality:**
+            - **Dynamic Filenames**: Automatically named based on engine used
+            - **Timestamp Integration**: Reports include generation date/time
+            - **Session Recovery**: Reports persist across browser sessions
+            - **Multiple Download Options**: Choose format based on use case
+            """)
 
-    with col2:
-        st.success("""
-        **Enhanced Features:**
-        - **Professional PDF Generation**: Full reportlab implementation
-        - **Dynamic Content**: AI-generated insights and recommendations
-        - **Interactive Charts**: Plotly visualizations included
-        - **Comprehensive Analysis**: Market trends and suburb comparisons
-        - **Professional Branding**: Consistent styling and formatting
-        - **Action Recommendations**: Clear next steps for clients
+        with col2:
+            st.success("""
+            **Enhanced Features:**
+            - **Professional PDF Generation**: Full reportlab implementation
+            - **Dynamic Content**: AI-generated insights and recommendations
+            - **Interactive Charts**: Plotly visualizations included
+            - **Comprehensive Analysis**: Market trends and suburb comparisons
+            - **Professional Branding**: Consistent styling and formatting
+            - **Action Recommendations**: Clear next steps for clients
 
-        **Export Options:**
-        - **PDF Reports**: Client-ready presentations
-        - **CSV Data**: Detailed analysis spreadsheets
-        - **JSON Insights**: AI reasoning and analysis
-        - **Session Backup**: Automatic data persistence
-        """)
+            **Export Options:**
+            - **PDF Reports**: Client-ready presentations
+            - **CSV Data**: Detailed analysis spreadsheets
+            - **JSON Insights**: AI reasoning and analysis
+            - **Session Backup**: Automatic data persistence
+            """)
 
-    st.markdown("---")
 
     # AI Assistant section
-    st.markdown("### AI Assistant Chat")
+    with st.expander("### 💬 AI Assistant Chat", expanded=False):
+        col1, col2 = st.columns([2, 1])
 
-    col1, col2 = st.columns([2, 1])
+        with col1:
+            st.markdown("""
+            **Purpose**: Get instant answers about your analysis, explore alternative scenarios, and receive expert guidance.
 
-    with col1:
-        st.markdown("""
-        **Purpose**: Get instant answers about your analysis, explore alternative scenarios, and receive expert guidance.
+            **AI Assistant Capabilities:**
+            - Access to all your uploaded client data and market analysis
+            - Real-time answers about suburb recommendations
+            - Alternative scenario exploration
+            - Market trend explanations
+            - Investment strategy advice
 
-        **AI Assistant Capabilities:**
-        - Access to all your uploaded client data and market analysis
-        - Real-time answers about suburb recommendations
-        - Alternative scenario exploration
-        - Market trend explanations
-        - Investment strategy advice
+            **How to Use:**
+            - Ask specific questions about recommended suburbs
+            - Request alternative analysis with different criteria
+            - Get explanations of scoring methodology
+            - Explore "what-if" scenarios
+            - Receive market trend insights
 
-        **How to Use:**
-        - Ask specific questions about recommended suburbs
-        - Request alternative analysis with different criteria
-        - Get explanations of scoring methodology
-        - Explore "what-if" scenarios
-        - Receive market trend insights
+            **Example Questions:**
+            - "Why was [suburb] ranked higher than [suburb]?"
+            - "What would happen if my client increased their budget to $800k?"
+            - "Are there any emerging areas with high growth potential?"
+            - "What are the risks of investing in [specific suburb]?"
+            - "How do current interest rates affect these recommendations?"
+            """)
 
-        **Example Questions:**
-        - "Why was [suburb] ranked higher than [suburb]?"
-        - "What would happen if my client increased their budget to $800k?"
-        - "Are there any emerging areas with high growth potential?"
-        - "What are the risks of investing in [specific suburb]?"
-        - "How do current interest rates affect these recommendations?"
-        """)
-
-    with col2:
-        st.info("""
-        **AI Has Access To:**
-        - Your client profiles
-        - All imported market data
-        - Generated recommendations
-        - Scoring methodology
+        with col2:
+            st.info("""
+            **AI Has Access To:**
+            - Your client profiles
+            - All imported market data
+            - Generated recommendations
+            - Scoring methodology
         - Market trends
 
         **Get Help With:**
