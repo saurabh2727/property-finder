@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 from utils.session_state import get_workflow_progress
 from components.api_key_storage_modal import render_api_key_button_and_modal
 
@@ -6,6 +7,43 @@ def render_clean_sidebar():
     """Render a clean, professional sidebar with minimal design"""
 
     with st.sidebar:
+        # Auto-load API key from browser on first render
+        if not st.session_state.get('api_key_load_attempted', False):
+            # Hidden component to load API key
+            loaded_key = components.html("""
+            <!DOCTYPE html>
+            <html>
+            <body style="margin:0;padding:0;">
+                <script>
+                    const STORAGE_KEY = 'property_finder_openai_api_key';
+                    try {
+                        const encoded = localStorage.getItem(STORAGE_KEY);
+                        if (encoded && encoded !== 'null' && encoded !== 'undefined') {
+                            const apiKey = atob(encoded);
+                            window.parent.postMessage({
+                                type: 'streamlit:setComponentValue',
+                                value: apiKey
+                            }, '*');
+                        } else {
+                            window.parent.postMessage({
+                                type: 'streamlit:setComponentValue',
+                                value: null
+                            }, '*');
+                        }
+                    } catch(e) {
+                        window.parent.postMessage({
+                            type: 'streamlit:setComponentValue',
+                            value: null
+                        }, '*');
+                    }
+                </script>
+            </body>
+            </html>
+            """, height=0)
+
+            if loaded_key and isinstance(loaded_key, str) and loaded_key.startswith('sk-'):
+                st.session_state.user_openai_api_key = loaded_key
+            st.session_state.api_key_load_attempted = True
         # Hide the collapse button completely
         st.markdown("""
         <style>

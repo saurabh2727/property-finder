@@ -19,6 +19,14 @@ def initialize_session_state():
     if 'workflow_step' not in st.session_state:
         st.session_state.workflow_step = 1
 
+    # API Key persistence flags
+    if 'user_openai_api_key' not in st.session_state:
+        st.session_state.user_openai_api_key = None
+    if 'api_key_tested' not in st.session_state:
+        st.session_state.api_key_tested = False
+    if 'api_key_load_attempted' not in st.session_state:
+        st.session_state.api_key_load_attempted = False
+
     # Customer profile with persistence check
     if 'customer_profile' not in st.session_state:
         st.session_state.customer_profile = {}
