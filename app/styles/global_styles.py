@@ -71,7 +71,7 @@ def get_global_css():
     /* Streamlit Container Improvements */
     .main .block-container {{
         max-width: 1200px;
-        padding-top: 2rem;
+        padding-top: 0rem !important;
         padding-bottom: 3rem;
     }}
 
@@ -216,7 +216,8 @@ def get_global_css():
         background: {GRADIENTS['header']};
         color: white;
         padding: 3rem 2rem;
-        border-radius: 12px;
+        border-radius: 0px;
+        margin-top: 0rem !important;
         margin-bottom: 2rem;
         text-align: center;
     }}

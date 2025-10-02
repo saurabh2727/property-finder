@@ -22,13 +22,73 @@ from styles.global_styles import get_global_css
 st.markdown(
     """
     <style>
-    /* Remove all top and bottom padding from the main container using Streamlit's data-testid attribute */
-    [data-testid="stAppViewContainer"] > div {
-        padding-top: 0rem !important;
-        padding-bottom: 0rem !important;
+    /* Aggressive removal of all top spacing */
+    html, body {
+        margin: 0 !important;
+        padding: 0 !important;
     }
+
+    [data-testid="stAppViewContainer"] {
+        padding-top: 0px !important;
+        margin-top: 0px !important;
+    }
+
+    [data-testid="stAppViewContainer"] > div {
+        padding-top: 0px !important;
+        padding-bottom: 0px !important;
+        margin-top: 0px !important;
+    }
+
+    .main {
+        padding-top: 0px !important;
+        margin-top: 0px !important;
+    }
+
+    .main > div {
+        padding-top: 0px !important;
+        margin-top: 0px !important;
+    }
+
+    .block-container {
+        padding-top: 0px !important;
+        margin-top: 0px !important;
+    }
+
+    section[data-testid="stSidebar"] + section {
+        padding-top: 0px !important;
+    }
+
+    /* Target the element container */
+    .element-container:first-child {
+        margin-top: 0px !important;
+        padding-top: 0px !important;
+    }
+
     /* Hide header if present */
-    header { display: none; }
+    header {
+        display: none !important;
+        visibility: hidden !important;
+        height: 0px !important;
+        padding: 0px !important;
+        margin: 0px !important;
+    }
+
+    /* Remove default Streamlit top spacing */
+    [data-testid="stHeader"] {
+        display: none !important;
+        height: 0px !important;
+    }
+
+    [data-testid="stToolbar"] {
+        display: none !important;
+    }
+
+    /* Force hero section to top */
+    .hero-section:first-child,
+    div:has(> .hero-section) {
+        margin-top: 0px !important;
+        padding-top: 0px !important;
+    }
     </style>
     """,
     unsafe_allow_html=True
