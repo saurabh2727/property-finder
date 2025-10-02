@@ -94,6 +94,13 @@ def analyze_customer_document(uploaded_file):
 
     with st.spinner("🔍 Analyzing customer document..."):
         try:
+            # Check if API key is available
+            api_key = st.session_state.get('user_openai_api_key')
+            if not api_key:
+                st.error("❌ OpenAI API key not found. Please configure your API key in the sidebar.")
+                st.info("💡 Click on '🔑 API Config' in the sidebar to add your OpenAI API key.")
+                return
+
             # Extract text from document
             document_content = DocumentProcessor.process_document(uploaded_file)
 
@@ -106,7 +113,7 @@ def analyze_customer_document(uploaded_file):
                 st.text_area("Document Content", document_content, height=200, disabled=True)
 
             # Analyze with AI
-            openai_service = OpenAIService()
+            openai_service = OpenAIService(api_key=api_key)
             customer_profile = openai_service.analyze_customer_profile(document_content)
 
             if customer_profile:
