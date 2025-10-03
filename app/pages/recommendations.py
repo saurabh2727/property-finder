@@ -559,13 +559,27 @@ def generate_recommendations(df, customer_profile, num_recommendations, approach
 
             try:
                 # Check API key before proceeding
-                if not st.session_state.get('user_openai_api_key'):
-                    st.error("⚠️ Please enter your OpenAI API key in the sidebar before generating recommendations.")
+                api_key = st.session_state.get('user_openai_api_key')
+
+                if not api_key:
+                    st.error("⚠️ **API Key Missing**: Please configure your OpenAI API key before generating recommendations.")
+                    st.info("💡 **How to fix:**\n"
+                           "1. Click '🔑 API Config' in the sidebar\n"
+                           "2. Enter your OpenAI API key\n"
+                           "3. Click 'Done' to save\n"
+                           "4. Return here and try again")
                     return None
 
                 st.info("🔧 **Initializing AI/GenAI Service...**")
-                openai_service = OpenAIService()
-                st.success("✅ AI service initialized successfully")
+                st.write(f"✅ API Key detected: {api_key[:10]}...")
+
+                try:
+                    openai_service = OpenAIService(api_key=api_key)
+                    st.success("✅ AI service initialized successfully")
+                except Exception as init_error:
+                    st.error(f"❌ **Failed to initialize OpenAI service:**\n{str(init_error)}")
+                    st.warning("Please check that your API key is valid and has sufficient credits.")
+                    return None
 
                 # Build enhanced prompt context with ML insights
                 ml_context = ""
@@ -647,11 +661,17 @@ def convert_ai_to_ranked_list(ai_recommendations, df, num_recommendations):
     """Convert AI recommendations to ranked DataFrame format for display"""
 
     try:
+        st.write("🔍 **Debug: AI Recommendations Structure:**")
+        st.json(ai_recommendations)
+
         ai_suburbs = ai_recommendations.get('recommended_suburbs', [])
 
         if not ai_suburbs:
             st.warning("⚠️ No recommended suburbs found in AI response")
+            st.write("Available keys:", list(ai_recommendations.keys()) if ai_recommendations else "None")
             return None
+
+        st.success(f"✅ Found {len(ai_suburbs)} AI-recommended suburbs")
 
         # Create a list to store matched suburbs with AI data
         ranked_suburbs = []
