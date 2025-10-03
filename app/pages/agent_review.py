@@ -544,19 +544,134 @@ def display_research_results(suburb, research_type):
         st.info(f"Research results for {research_type} in {suburb} would be displayed here")
 
 def display_suburb_comparison(suburb1, suburb2):
-    """Display suburb comparison"""
+    """Display suburb comparison with real data from suburb_data"""
 
     st.markdown(f"### 📊 Comparison: {suburb1} vs {suburb2}")
 
-    # Mock comparison data
+    # Get actual suburb data
+    suburb_data = st.session_state.get('suburb_data')
+
+    if suburb_data is None or suburb_data.empty:
+        st.warning("No suburb data available for comparison")
+        return
+
+    # Find the suburb rows
+    suburb1_data = suburb_data[suburb_data['Suburb'] == suburb1]
+    suburb2_data = suburb_data[suburb_data['Suburb'] == suburb2]
+
+    if suburb1_data.empty:
+        st.error(f"No data found for {suburb1}")
+        return
+
+    if suburb2_data.empty:
+        st.error(f"No data found for {suburb2}")
+        return
+
+    # Get first match for each suburb
+    s1 = suburb1_data.iloc[0]
+    s2 = suburb2_data.iloc[0]
+
+    # Build comparison data with all available fields
+    metrics = []
+    suburb1_values = []
+    suburb2_values = []
+
+    # Define all metrics to compare
+    metric_definitions = [
+        ('Median Price', 'Median Price', lambda x: f"${x:,.0f}" if pd.notna(x) else 'N/A'),
+        ('Rental Yield (Houses)', 'Rental Yield on Houses', lambda x: f"{x:.2f}%" if pd.notna(x) else 'N/A'),
+        ('Rental Yield (Units)', 'Rental Yield on Units', lambda x: f"{x:.2f}%" if pd.notna(x) else 'N/A'),
+        ('10yr Growth', '10 yr Avg. Annual Growth', lambda x: f"{x:.2f}%" if pd.notna(x) else 'N/A'),
+        ('5yr Growth', '5 yr Avg. Annual Growth', lambda x: f"{x:.2f}%" if pd.notna(x) else 'N/A'),
+        ('Distance to CBD', 'Distance (km) to CBD', lambda x: f"{x:.1f} km" if pd.notna(x) else 'N/A'),
+        ('Population', 'Population', lambda x: f"{x:,.0f}" if pd.notna(x) else 'N/A'),
+        ('Vacancy Rate', 'Vacancy Rate (%)', lambda x: f"{x:.2f}%" if pd.notna(x) else 'N/A'),
+        ('Days on Market', 'Median Days on Market', lambda x: f"{x:.0f} days" if pd.notna(x) else 'N/A'),
+        ('Rental Demand', 'Rental Demand Score', lambda x: f"{x:.1f}/10" if pd.notna(x) else 'N/A'),
+        ('Infrastructure Score', 'Infrastructure Development Score', lambda x: f"{x:.1f}/10" if pd.notna(x) else 'N/A'),
+        ('School Rating', 'School Rating (1-10)', lambda x: f"{x:.1f}/10" if pd.notna(x) else 'N/A'),
+        ('Crime Rate', 'Crime Rate (per 1000)', lambda x: f"{x:.2f}" if pd.notna(x) else 'N/A'),
+        ('State', 'State', lambda x: str(x) if pd.notna(x) else 'N/A'),
+    ]
+
+    # Only include metrics that exist in the dataframe
+    for display_name, column_name, formatter in metric_definitions:
+        if column_name in suburb_data.columns:
+            metrics.append(display_name)
+            suburb1_values.append(formatter(s1.get(column_name)))
+            suburb2_values.append(formatter(s2.get(column_name)))
+
+    # Create comparison dataframe
     comparison_data = {
-        'Metric': ['Median Price', 'Rental Yield', '10yr Growth', 'Distance to CBD'],
-        suburb1: ['$750,000', '4.2%', '6.5%', '15km'],
-        suburb2: ['$680,000', '4.8%', '5.2%', '22km']
+        'Metric': metrics,
+        suburb1: suburb1_values,
+        suburb2: suburb2_values
     }
 
     comparison_df = pd.DataFrame(comparison_data)
-    st.dataframe(comparison_df, use_container_width=True)
+
+    # Display as styled dataframe
+    st.dataframe(comparison_df, use_container_width=True, hide_index=True)
+
+    # Add visual comparison charts
+    st.markdown("---")
+    st.markdown("#### Visual Comparison")
+
+    # Create comparison charts for key numeric metrics
+    chart_col1, chart_col2 = st.columns(2)
+
+    with chart_col1:
+        # Price and Growth comparison
+        if 'Median Price' in suburb_data.columns:
+            price_data = pd.DataFrame({
+                'Suburb': [suburb1, suburb2],
+                'Median Price': [
+                    s1.get('Median Price', 0),
+                    s2.get('Median Price', 0)
+                ]
+            })
+
+            fig = px.bar(price_data, x='Suburb', y='Median Price',
+                        title='Median Price Comparison',
+                        color='Suburb',
+                        text_auto='$.2s')
+            fig.update_layout(showlegend=False)
+            st.plotly_chart(fig, use_container_width=True)
+
+    with chart_col2:
+        # Yield comparison
+        if 'Rental Yield on Houses' in suburb_data.columns:
+            yield_data = pd.DataFrame({
+                'Suburb': [suburb1, suburb2],
+                'Rental Yield': [
+                    s1.get('Rental Yield on Houses', 0),
+                    s2.get('Rental Yield on Houses', 0)
+                ]
+            })
+
+            fig = px.bar(yield_data, x='Suburb', y='Rental Yield',
+                        title='Rental Yield Comparison (%)',
+                        color='Suburb',
+                        text_auto='.2f')
+            fig.update_layout(showlegend=False)
+            st.plotly_chart(fig, use_container_width=True)
+
+    # Growth comparison
+    if '10 yr Avg. Annual Growth' in suburb_data.columns:
+        growth_data = pd.DataFrame({
+            'Suburb': [suburb1, suburb2],
+            '10yr Growth': [
+                s1.get('10 yr Avg. Annual Growth', 0),
+                s2.get('10 yr Avg. Annual Growth', 0)
+            ]
+        })
+
+        fig = px.bar(growth_data, x='Suburb', y='10yr Growth',
+                    title='10-Year Average Annual Growth (%)',
+                    color='Suburb',
+                    text_auto='.2f')
+        fig.update_layout(showlegend=False)
+        st.plotly_chart(fig, use_container_width=True)
 
 # Add to main app navigation
 def add_agent_review_to_sidebar():
