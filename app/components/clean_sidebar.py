@@ -222,6 +222,7 @@ def render_clean_sidebar():
             ('agent_review', 'Agent Review'),
             ('reports', 'Reports'),
             ('ai_chat', 'AI Assistant'),
+            ('system_tests', 'System Tests'),
             ('user_guide', 'User Guide')
         ]
 

@@ -13,6 +13,7 @@ from pages.data_upload import render_data_upload_page
 from pages.recommendations import render_recommendations_page
 from pages.reports import render_reports_page
 from pages.agent_review import render_agent_review_page
+from pages.system_tests import render_system_tests_page
 from components.clean_sidebar import render_clean_sidebar
 from utils.session_state import initialize_session_state
 from services.mcp_agent import render_chat_page
@@ -217,6 +218,8 @@ def main():
         render_reports_page()
     elif page == 'ai_chat':
         render_chat_page()
+    elif page == 'system_tests':
+        render_system_tests_page()
 
 if __name__ == "__main__":
     main()
