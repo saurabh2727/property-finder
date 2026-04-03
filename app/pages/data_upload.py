@@ -97,11 +97,13 @@ def upload_new_data():
 
         with col1:
             if st.button("🌐 Connect to API", use_container_width=True):
-                show_api_connection_form()
+                st.session_state.active_alt_form = 'api'
+                st.rerun()
 
         with col2:
             if st.button("✏️ Manual Entry", use_container_width=True):
-                show_manual_data_entry()
+                st.session_state.active_alt_form = 'manual'
+                st.rerun()
 
         with col3:
             if st.button("⚡ Load Converted Data", use_container_width=True):
@@ -111,11 +113,20 @@ def upload_new_data():
 
         with col1:
             if st.button("🌐 Connect to API", use_container_width=True):
-                show_api_connection_form()
+                st.session_state.active_alt_form = 'api'
+                st.rerun()
 
         with col2:
             if st.button("✏️ Manual Entry", use_container_width=True):
-                show_manual_data_entry()
+                st.session_state.active_alt_form = 'manual'
+                st.rerun()
+
+    # Render the active form persistently (survives button clicks inside)
+    active_form = st.session_state.get('active_alt_form')
+    if active_form == 'api':
+        show_api_connection_form()
+    elif active_form == 'manual':
+        show_manual_data_entry()
 
 def process_uploaded_data(uploaded_file):
     """Process and validate uploaded data file with automatic HtAG detection"""
@@ -309,28 +320,233 @@ def display_validation_results(validation_results, df):
                 st.write(f"**{col}:** {dtype}")
 
 def show_api_connection_form():
-    """Show API connection form for external data sources"""
+    """Fetch suburb data from free Australian government APIs."""
+    import concurrent.futures
+    from utils.data_cache import DataCache
+    from services.data_fetcher.sa2_concordance import SA2Concordance
+    from services.data_fetcher.abs_seifa_fetcher import ABSSEIFAFetcher
+    from services.data_fetcher.abs_erp_fetcher import ABSERPFetcher
+    from services.data_fetcher.abs_building_approvals_fetcher import ABSBuildingApprovalsFetcher
+    from services.data_fetcher.abs_census_fetcher import ABSCensusFetcher
+    from services.data_fetcher.nsw_sales_fetcher import NSWSalesFetcher
+    from services.data_fetcher.vic_sales_fetcher import VICSalesFetcher
+    from services.data_fetcher.rental_data_fetcher import RentalDataFetcher
+    from services.data_fetcher.acara_schools_fetcher import ACARASchoolsFetcher
+    from services.data_fetcher.domain_fetcher import DomainListingsFetcher, DomainRentalAVMFetcher
+    from services.data_fetcher.data_merger import DataMerger
+    from utils.session_state import save_raw_dataset, set_fetch_status, save_suburb_data, update_workflow_step
 
-    st.subheader("🌐 API Data Connection")
+    st.subheader("Fetch from Australian Government APIs")
+    st.info(
+        "These sources are free and require no API keys. "
+        "Data is cached locally so subsequent loads are instant."
+    )
 
-    with st.form("api_connection_form"):
-        api_source = st.selectbox(
-            "Select Data Source",
-            ["CoreLogic", "Domain", "Realestate.com.au", "Custom API"]
+    cache = DataCache()
+
+    # Cache status
+    with st.expander("Cache Status", expanded=False):
+        cached = cache.list_cached()
+        if cached:
+            cache_df = pd.DataFrame(cached)
+            cache_df["status"] = cache_df["fresh"].map({True: "Fresh", False: "Stale"})
+            st.dataframe(cache_df[["key", "fetched_at", "age_hours", "ttl_hours", "status", "row_count"]], use_container_width=True)
+        else:
+            st.write("No cached data yet.")
+
+    st.markdown("---")
+
+    st.info(
+        "**What each source provides:**\n"
+        "- **ABS sources** (SEIFA, ERP, Census) → demographic & socioeconomic enrichment only — no property prices\n"
+        "- **Domain API** → listing prices & rental estimates (requires active API key)\n"
+        "- **For Median Price / Rental Yield data**: upload a CSV file (e.g. HtAG export) using the File Upload tab above, "
+        "then use API fetch to enrich it with ABS signals"
+    )
+
+    # Source selection
+    st.markdown("**Select data sources to fetch:**")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        use_seifa = st.checkbox("ABS SEIFA 2021 — Socioeconomic indexes", value=True,
+                                 help="Socioeconomic advantage/disadvantage scores per SA2. No API key required.")
+        use_erp = st.checkbox("ABS Population (ERP) — Resident population by SA2", value=True,
+                               help="Estimated Resident Population, 2001–present. Used for population growth rate.")
+        use_building = st.checkbox("ABS Building Approvals — New dwelling approvals", value=True,
+                                    help="Monthly new dwelling approvals by SA2 from 2016. Supply indicator.")
+        use_census = st.checkbox("ABS Census 2021 — Income, tenure, dwelling types", value=False,
+                                  help="Requires manual download of ABS DataPack ZIP. See instructions below.")
+
+    with col2:
+        use_nsw_sales = st.checkbox("NSW Property Sales — Valuer General", value=False,
+                                     help="⚠️ NSW VG bulk download endpoint currently unavailable (HTTP 500). Will return empty — upload CSV manually instead.")
+        use_vic_sales = st.checkbox("VIC Property Sales — land.vic.gov.au", value=False,
+                                     help="Attempts to fetch VIC median prices via CKAN discovery. May return empty if file is Cloudflare-protected.")
+        use_rental = st.checkbox("Rental Data — NSW & VIC government", value=False,
+                                  help="Median weekly rent by suburb/postcode from state governments.")
+        use_schools = st.checkbox("School Quality — ACARA My School (ICSEA scores)", value=True,
+                                   help="Free school quality scores per suburb from ACARA. No API key required.")
+        use_domain_listings = st.checkbox("Domain Listings — current listings (sandbox, free)", value=False,
+                                           help="Requires free Domain developer API key. 500 calls/day limit.")
+        use_domain_rental = st.checkbox("Domain Rental AVM — rental estimates (free)", value=False,
+                                         help="Requires free Domain developer API key. Unlimited calls.")
+
+    domain_key = None
+    if use_domain_listings or use_domain_rental:
+        domain_key = st.text_input(
+            "Domain API Key",
+            type="password",
+            value=st.session_state.get('domain_api_key', '') or '',
+            help="Register free at https://developer.domain.com.au"
         )
+        if domain_key:
+            st.session_state.domain_api_key = domain_key
+        else:
+            st.warning("Domain API key required for Domain sources.")
 
-        api_url = st.text_input("API Endpoint URL")
-        api_key = st.text_input("API Key", type="password")
+    if use_census:
+        from pathlib import Path as _Path
+        _raw_dir = _Path(__file__).parent.parent.parent / "data" / "raw"
+        zip_path = _raw_dir / "abs_census_2021_gcp_sa2.zip"
+        if not zip_path.exists():
+            st.warning(
+                f"Census DataPack not found at `{zip_path}`.\n\n"
+                "**To download:**\n"
+                "1. Go to https://www.abs.gov.au/census/find-census-data/datapacks\n"
+                "2. Select: 2021 → General Community Profile → SA2 → All of Australia\n"
+                f"3. Save the ZIP as: `{zip_path}`"
+            )
 
-        # Additional parameters
-        st.subheader("Query Parameters")
-        state_filter = st.multiselect("States", ["NSW", "VIC", "QLD", "SA", "WA", "TAS", "NT", "ACT"])
-        max_records = st.number_input("Maximum Records", min_value=100, max_value=10000, value=1000)
+    force_refresh = st.checkbox("Force refresh (ignore cache)", value=False)
 
-        submitted = st.form_submit_button("🔗 Connect & Fetch Data")
+    if st.button("Fetch Selected Sources", type="primary"):
+        selected = {
+            "seifa": use_seifa,
+            "erp": use_erp,
+            "building_approvals": use_building,
+            "census": use_census,
+            "nsw_sales": use_nsw_sales,
+            "vic_sales": use_vic_sales,
+            "rental": use_rental,
+            "acara_schools": use_schools,
+            "domain_listings": use_domain_listings and bool(domain_key),
+            "domain_rental_avm": use_domain_rental and bool(domain_key),
+        }
+        selected = {k: v for k, v in selected.items() if v}
 
-        if submitted:
-            st.info("🚧 API integration feature coming soon! Please use file upload for now.")
+        if not selected:
+            st.warning("Please select at least one data source.")
+            return
+
+        # Build suburb list for Domain fetchers from existing data if available
+        suburb_list = []
+        if st.session_state.get('suburb_data') is not None:
+            df_existing = st.session_state.suburb_data
+            suburb_col = "Suburb" if "Suburb" in df_existing.columns else "suburb"
+            state_col = "State" if "State" in df_existing.columns else "state"
+            if suburb_col in df_existing.columns and state_col in df_existing.columns:
+                suburb_list = df_existing[[suburb_col, state_col]].dropna().rename(
+                    columns={suburb_col: "suburb", state_col: "state"}
+                ).to_dict("records")
+
+        def _fetch_domain_rental(c, api_key, suburbs):
+            """Fetch listings first, then aggregate rental AVM estimates per suburb."""
+            listings_fetcher = DomainListingsFetcher(c, api_key, suburbs[:20])
+            listings_df = listings_fetcher._fetch_listings_for_suburbs(suburbs[:20])
+            if listings_df.empty:
+                return pd.DataFrame()
+            rental_fetcher = DomainRentalAVMFetcher(c, api_key)
+            return rental_fetcher.fetch_rental_estimates_for_suburbs(listings_df)
+
+        fetcher_map = {
+            "seifa": lambda: ABSSEIFAFetcher(cache).fetch(force_refresh),
+            "erp": lambda: ABSERPFetcher(cache).fetch(force_refresh),
+            "building_approvals": lambda: ABSBuildingApprovalsFetcher(cache).fetch(force_refresh),
+            "census": lambda: ABSCensusFetcher(cache).fetch(force_refresh),
+            "nsw_sales": lambda: NSWSalesFetcher(cache).fetch(force_refresh),
+            "vic_sales": lambda: VICSalesFetcher(cache).fetch(force_refresh),
+            "rental": lambda: RentalDataFetcher(cache).fetch(force_refresh),
+            "acara_schools": lambda: ACARASchoolsFetcher(cache).fetch(force_refresh),
+            "domain_listings": lambda: DomainListingsFetcher(cache, domain_key, suburb_list).fetch(force_refresh),
+            "domain_rental_avm": lambda: _fetch_domain_rental(cache, domain_key, suburb_list),
+        }
+
+        results = {}
+        progress = st.progress(0)
+        status_area = st.empty()
+        total = len(selected)
+
+        def run_fetcher(key):
+            set_fetch_status(key, "fetching")
+            try:
+                df = fetcher_map[key]()
+                save_raw_dataset(key, df)
+                return key, df, None
+            except Exception as e:
+                set_fetch_status(key, "failed")
+                return key, None, str(e)
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+            futures = {executor.submit(run_fetcher, k): k for k in selected}
+            completed = 0
+            for future in concurrent.futures.as_completed(futures):
+                key, df, error = future.result()
+                completed += 1
+                progress.progress(completed / total)
+                if error:
+                    status_area.error(f"{key}: failed — {error}")
+                else:
+                    results[key] = df
+                    status_area.success(f"{key}: {len(df)} rows fetched")
+
+        st.session_state.raw_fetched_datasets.update(results)
+
+        if results:
+            st.success(f"Fetched {len(results)} source(s) successfully.")
+            # Persist results so the Merge button (next re-run) can access them
+            st.session_state._api_fetch_results = results
+
+    # --- Merge section (rendered every run when fetch results exist) ---
+    fetch_results = st.session_state.get('_api_fetch_results')
+    if fetch_results:
+        st.markdown("---")
+        st.markdown("**Merge into suburb dataset**")
+
+        concordance = SA2Concordance(cache)
+        concordance.load()
+        merger = DataMerger(concordance)
+
+        base_df = st.session_state.get('suburb_data')
+        if base_df is not None:
+            st.info(f"Existing uploaded dataset found ({len(base_df)} rows). Will enrich with API data.")
+
+        if st.button("Merge & Save Dataset", type="primary"):
+            with st.spinner("Merging datasets..."):
+                enriched = merger.merge(base_df, fetch_results)
+                validation = merger.validate_enriched(enriched)
+
+                save_suburb_data(enriched)
+                st.session_state.data_source_mode = "api" if base_df is None else "hybrid"
+                # Clear fetch results once merged
+                del st.session_state['_api_fetch_results']
+
+            st.success(f"Dataset ready: {len(enriched)} suburbs, {len(enriched.columns)} columns")
+
+            with st.expander("Enrichment Coverage", expanded=True):
+                cov_data = [{"column": k, "coverage": v} for k, v in validation["column_coverage"].items()]
+                if cov_data:
+                    st.dataframe(pd.DataFrame(cov_data), use_container_width=True)
+                for w in validation.get("warnings", []):
+                    st.warning(w)
+
+            st.markdown("**Preview (first 10 rows):**")
+            st.dataframe(enriched.head(10), use_container_width=True)
+
+            update_workflow_step(3)
+            if st.button("Continue to Recommendations →"):
+                st.session_state.current_page = 'recommendations'
+                st.rerun()
 
 def show_manual_data_entry():
     """Show manual data entry interface"""
@@ -472,20 +688,34 @@ def display_uploaded_data():
     with col1:
         st.metric("Total Suburbs", len(df))
     with col2:
-        states = df['State'].nunique() if 'State' in df.columns else 0
-        st.metric("States Covered", states)
+        if 'State' in df.columns:
+            real_states = df['State'].replace('N/A', pd.NA).dropna().nunique()
+            st.metric("States Covered", real_states if real_states > 0 else "N/A")
+        else:
+            st.metric("States Covered", "N/A")
     with col3:
         if 'Median Price' in df.columns:
-            avg_price = df['Median Price'].mean()
-            st.metric("Avg Median Price", f"${avg_price:,.0f}")
+            avg_price = df['Median Price'].dropna()
+            st.metric("Avg Median Price", f"${avg_price.mean():,.0f}" if len(avg_price) > 0 else "N/A")
         else:
             st.metric("Avg Median Price", "N/A")
     with col4:
         if 'Rental Yield on Houses' in df.columns:
-            avg_yield = df['Rental Yield on Houses'].mean()
-            st.metric("Avg Rental Yield", f"{avg_yield:.1f}%")
+            avg_yield = df['Rental Yield on Houses'].dropna()
+            st.metric("Avg Rental Yield", f"{avg_yield.mean():.1f}%" if len(avg_yield) > 0 else "N/A")
         else:
             st.metric("Avg Rental Yield", "N/A")
+
+    # Warn if price data is missing (API-only dataset)
+    has_price = 'Median Price' in df.columns and df['Median Price'].notna().any()
+    has_yield = 'Rental Yield on Houses' in df.columns and df['Rental Yield on Houses'].notna().any()
+    has_state = 'State' in df.columns and df['State'].replace('N/A', pd.NA).notna().any()
+
+    if not has_price:
+        st.warning(
+            "**No property price data** — ABS demographic sources don't include median prices. "
+            "To add prices, also fetch **NSW Property Sales** or **VIC Property Sales**, or upload a CSV with price data."
+        )
 
     # Visualizations
     st.subheader("📈 Data Visualizations")
@@ -493,29 +723,36 @@ def display_uploaded_data():
     tab1, tab2, tab3 = st.tabs(["Price Distribution", "Yield Analysis", "Geographic Spread"])
 
     with tab1:
-        if 'Median Price' in df.columns and 'State' in df.columns:
-            fig = px.box(df, x='State', y='Median Price', title="Median Price Distribution by State")
+        if has_price and has_state:
+            price_df = df[df['Median Price'].notna() & (df['State'] != 'N/A')]
+            fig = px.box(price_df, x='State', y='Median Price', title="Median Price Distribution by State")
             st.plotly_chart(fig, use_container_width=True)
         else:
-            st.info("Price distribution chart requires 'Median Price' and 'State' columns")
+            st.info("Price distribution requires Median Price data. Fetch NSW/VIC Sales or upload a CSV.")
 
     with tab2:
-        if 'Rental Yield on Houses' in df.columns and 'Median Price' in df.columns:
-            fig = px.scatter(df, x='Median Price', y='Rental Yield on Houses',
-                           hover_data=['Suburb'] if 'Suburb' in df.columns else None,
+        if has_price and has_yield:
+            yield_df = df[df['Median Price'].notna() & df['Rental Yield on Houses'].notna()]
+            fig = px.scatter(yield_df, x='Median Price', y='Rental Yield on Houses',
+                           hover_data=['Suburb'] if 'Suburb' in yield_df.columns else None,
                            title="Rental Yield vs Median Price")
             st.plotly_chart(fig, use_container_width=True)
         else:
-            st.info("Yield analysis requires 'Rental Yield on Houses' and 'Median Price' columns")
+            st.info("Yield analysis requires both Median Price and Rental Yield data.")
 
     with tab3:
-        if 'State' in df.columns:
-            state_counts = df['State'].value_counts()
+        if has_state:
+            state_counts = df[df['State'] != 'N/A']['State'].value_counts()
             fig = px.pie(values=state_counts.values, names=state_counts.index,
                         title="Suburb Distribution by State")
             st.plotly_chart(fig, use_container_width=True)
+        elif 'erp_population' in df.columns:
+            # Show population distribution as fallback
+            top20 = df.nlargest(20, 'erp_population')[['Suburb', 'erp_population']]
+            fig = px.bar(top20, x='Suburb', y='erp_population', title="Top 20 Suburbs by Population")
+            st.plotly_chart(fig, use_container_width=True)
         else:
-            st.info("Geographic spread chart requires 'State' column")
+            st.info("Geographic spread chart requires a 'State' column.")
 
     # Data table
     with st.expander("🔍 View Full Dataset", expanded=False):

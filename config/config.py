@@ -14,6 +14,7 @@ PROCESSED_DATA_DIR = DATA_DIR / "processed"
 # API Configuration
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4")
+DOMAIN_API_KEY = os.getenv("DOMAIN_API_KEY")
 
 # Database Configuration
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///property_insights.db")

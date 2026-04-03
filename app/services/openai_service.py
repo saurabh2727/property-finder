@@ -92,46 +92,30 @@ class OpenAIService:
         """
 
         try:
-            st.write("🤖 Calling OpenAI API...")
             response = self.client.chat.completions.create(
                 model=OPENAI_MODEL,
                 messages=[
-                    {"role": "system", "content": "You are an expert property investment advisor who specializes in analyzing customer profiles and investment requirements. Provide detailed, structured analysis in valid JSON format."},
+                    {"role": "system", "content": (
+                        "You are an expert property investment advisor. "
+                        "Extract structured customer profile information from the document. "
+                        "Respond with valid JSON only — no markdown, no commentary."
+                    )},
                     {"role": "user", "content": prompt}
                 ],
                 temperature=0.3,
-                max_tokens=2000
+                max_tokens=2000,
+                response_format={"type": "json_object"},
             )
 
-            # Extract JSON from response
             content = response.choices[0].message.content
-            st.write("✅ Got response from OpenAI")
-            st.write(f"Response length: {len(content)} characters")
-
-            # Show the raw response for debugging
-            with st.expander("🔍 Raw AI Response (Debug)"):
-                st.code(content)
-
-            json_match = re.search(r'\{.*\}', content, re.DOTALL)
-
-            if json_match:
-                json_str = json_match.group()
-                st.write("✅ Found JSON in response")
-                try:
-                    profile_data = json.loads(json_str)
-                    st.write("✅ Successfully parsed JSON")
-                    st.success("🎉 Profile analysis completed successfully!")
-                    return profile_data
-                except json.JSONDecodeError as e:
-                    st.error(f"❌ JSON parsing failed: {str(e)}")
-                    st.code(json_str)
-                    return self._create_fallback_profile(content)
-            else:
-                st.error("❌ No JSON found in AI response")
+            try:
+                profile_data = json.loads(content)
+                return profile_data
+            except json.JSONDecodeError:
                 return self._create_fallback_profile(content)
 
         except Exception as e:
-            st.error(f"❌ Error analyzing customer profile: {str(e)}")
+            st.error(f"Error analyzing customer profile: {str(e)}")
             import traceback
             st.code(traceback.format_exc())
             return self._create_empty_profile()
@@ -195,48 +179,91 @@ class OpenAIService:
             response = self.client.chat.completions.create(
                 model=OPENAI_MODEL,
                 messages=[
-                    {"role": "system", "content": "You are an expert property investment advisor specializing in suburb analysis and investment recommendations. Provide data-driven, practical advice."},
+                    {"role": "system", "content": (
+                        "You are an expert property investment advisor specializing in suburb analysis. "
+                        "You will be given actual suburb data rows in CSV format. "
+                        "Only recommend suburbs that appear in the provided data. "
+                        "Base your scores and reasons on the actual column values shown. "
+                        "Respond with valid JSON only — no markdown, no commentary."
+                    )},
                     {"role": "user", "content": prompt}
                 ],
                 temperature=0.4,
-                max_tokens=2500
+                max_tokens=3500,
+                response_format={"type": "json_object"},
             )
 
             content = response.choices[0].message.content
-            json_match = re.search(r'\{.*\}', content, re.DOTALL)
-
-            if json_match:
-                json_str = json_match.group()
-                recommendations = json.loads(json_str)
-                return recommendations
-            else:
-                return self._create_fallback_recommendations()
+            recommendations = json.loads(content)
+            return recommendations
 
         except Exception as e:
             st.error(f"Error generating recommendations: {str(e)}")
             return self._create_fallback_recommendations()
 
-    def _summarize_suburb_data(self, suburb_data) -> str:
-        """Create a summary of suburb data for AI analysis"""
-        if suburb_data is None:
-            return "No suburb data available"
+    def _summarize_suburb_data(self, suburb_data, max_rows: int = 50) -> str:
+        """
+        Build a structured suburb data payload for GPT-4.
+
+        Sends actual per-suburb rows (capped at max_rows) so GPT-4 can make
+        specific, data-grounded recommendations rather than generic ones.
+        Pre-filters to the most investment-relevant columns.
+        """
+        if suburb_data is None or suburb_data.empty:
+            return "No suburb data available."
 
         try:
-            # Basic summary of the data structure
-            summary = f"Dataset contains {len(suburb_data)} suburbs with the following metrics:\n"
-            if len(suburb_data) > 0:
-                columns = list(suburb_data.columns)
-                summary += f"Available data fields: {', '.join(columns[:20])}\n"
+            # Columns to include — ordered by relevance
+            preferred_cols = [
+                "Suburb", "State",
+                "Median Price", "Rental Yield on Houses",
+                "10 yr Avg. Annual Growth", "Distance (km) to CBD",
+                "Population", "Vacancy Rate", "Sales Days on Market",
+                # ABS enrichment
+                "seifa_irsad_decile", "pop_growth_rate_5yr",
+                "median_personal_income_weekly", "owner_occupied_pct",
+                "total_approvals_12m",
+                # Schools
+                "school_quality_score",
+                # Domain / sales
+                "domain_median_list_price", "domain_median_rental_estimate",
+                "nsw_median_sale_price", "vic_median_sale_price",
+                "median_rent_weekly_actual",
+            ]
+            available_cols = [c for c in preferred_cols if c in suburb_data.columns]
 
-                # Sample statistics if available
-                if 'Median Price' in columns:
-                    summary += f"Price range: ${suburb_data['Median Price'].min():,.0f} - ${suburb_data['Median Price'].max():,.0f}\n"
-                if 'Rental Yield on Houses' in columns:
-                    summary += f"Rental yields: {suburb_data['Rental Yield on Houses'].min():.1f}% - {suburb_data['Rental Yield on Houses'].max():.1f}%\n"
+            # If none of the preferred cols exist, fall back to all columns
+            if not available_cols:
+                available_cols = list(suburb_data.columns)
 
-            return summary
-        except Exception:
-            return "Suburb data structure could not be analyzed"
+            df = suburb_data[available_cols].copy()
+
+            # Drop rows with no price data
+            if "Median Price" in df.columns:
+                df = df.dropna(subset=["Median Price"])
+
+            # Cap rows — take top max_rows by ML score if available, else head
+            score_col = next((c for c in ["AI_Score", "Overall_Score", "Investment_Score"]
+                              if c in df.columns), None)
+            if score_col:
+                df = df.nlargest(max_rows, score_col)
+            else:
+                df = df.head(max_rows)
+
+            # Round floats for readability
+            df = df.round(2)
+
+            total = len(suburb_data)
+            shown = len(df)
+            header = (
+                f"Dataset: {total} suburbs total. "
+                f"Showing top {shown} by relevance.\n"
+                f"Columns: {', '.join(available_cols)}\n\n"
+            )
+            return header + df.to_csv(index=False)
+
+        except Exception as e:
+            return f"Suburb data could not be serialised: {e}"
 
     def _create_fallback_profile(self, content: str) -> Dict[str, Any]:
         """Create a basic profile structure when JSON parsing fails"""

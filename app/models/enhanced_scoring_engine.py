@@ -221,6 +221,48 @@ class EnhancedScoringEngine:
             'Less than $650 gross weekly income'
         ]
 
+        # ABS / Domain enrichment columns — added to feature sets when available
+        abs_growth_features = [
+            'pop_growth_rate_5yr',       # ABS ERP — population growth proxy for demand
+            'total_approvals_12m',       # ABS Building Approvals — new supply pipeline
+            'seifa_irsad_decile',        # SEIFA — socioeconomic advantage (higher = more desirable)
+            'erp_population',            # ABS ERP — raw population
+            'Population_Growth_Rate',    # Derived from ERP
+        ]
+        abs_yield_features = [
+            'median_rent_weekly_actual',        # State government rental bond data
+            'median_rent_weekly_census',        # ABS Census G02
+            'domain_median_rental_estimate',    # Domain Rental AVM
+            'Actual_Gross_Yield',               # Derived: actual rent / median price
+            'Domain_Gross_Yield',               # Derived: Domain AVM / median price
+            'owner_occupied_pct',               # Census tenure — higher = stable demand
+            'median_household_income_weekly',   # Census income
+        ]
+        abs_risk_features = [
+            'avg_monthly_approvals',            # High approvals = oversupply risk
+            'seifa_irsd_decile',                # Disadvantage index — higher = lower risk
+            'median_mortgage_monthly',          # Census mortgage stress proxy
+            'rented_pct',                       # High rental % = more volatile market
+            'domain_listing_count',             # High active listings = supply pressure
+            'Listing_Supply_Index',             # Derived supply pressure rank
+        ]
+        abs_all_features = [
+            'school_quality_score',             # ACARA ICSEA — amenity score
+            'seifa_ieo_decile',                 # Education/occupation index
+            'seifa_ier_decile',                 # Economic resources index
+            'Price_to_Income_Ratio',            # Derived affordability
+            'Socioeconomic_Score',              # Derived from SEIFA
+            'Owner_Occupier_Ratio',             # Derived tenure
+        ]
+
+        growth_features = growth_features + abs_growth_features
+        yield_features = yield_features + abs_yield_features
+        risk_features = risk_features + abs_risk_features
+        # Common amenity/quality features go to all three models
+        growth_features += abs_all_features
+        yield_features += abs_all_features
+        risk_features += abs_all_features
+
         # Filter to only include available columns
         self.feature_columns['growth'] = [col for col in growth_features if col in all_numeric_cols]
         self.feature_columns['yield'] = [col for col in yield_features if col in all_numeric_cols]

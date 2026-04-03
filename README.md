@@ -100,7 +100,7 @@ docs/            # Documentation and user guides
 
 ## Recent Enhancements
 
-### ✅ Latest Updates
+### Latest Updates
 - **Session Persistence**: Complete session management with automatic backup/recovery
 - **PDF Generation**: Full implementation using ReportLab with professional formatting
 - **Enhanced AI Integration**: OpenAI GPT-4 powered recommendation engine
@@ -127,3 +127,82 @@ The platform uses a multi-engine recommendation system:
 3. **Optional Engine**: Machine Learning models with feature importance analysis
 
 This ensures reliable recommendations with intelligent AI analysis when available, and robust fallback systems for consistent operation.
+
+---
+
+## Required Improvements
+
+The following issues have been identified through code review and need to be addressed before the platform can be considered production-ready.
+
+### Priority 1 — Fix Immediately
+
+#### Security
+- **Exposed API key in `.env`**: The OpenAI API key is committed to the repository in plaintext. Revoke the existing key in the OpenAI dashboard immediately, generate a new one, and ensure `.env` is listed in `.gitignore`. Never commit secrets to version control.
+
+#### ML Model — Circular Logic
+- **Hand-crafted target variable**: The Random Forest model is trained to predict a composite score that is manually constructed from `rental_yield × 0.30 + growth × 0.25 + vacancy_inverted × 0.20 + ...`. This means the model is learning to reproduce a formula that was already defined — it adds no predictive value over just applying the formula directly.
+- **Fix**: Either remove the Random Forest entirely and use the weighted scoring formula directly and transparently, or replace it with a genuine supervised model trained on historical investment outcome data.
+
+#### Silent Data Corruption via Hardcoded Defaults
+- **Missing columns filled silently**: When uploaded data lacks key columns (e.g. Population, State, Rental Yield), the app fills them with hardcoded defaults (`Population=15000`, `State=NSW`, `Rental Yield=4.0`) without warning the user. This produces analysis on fabricated data.
+- **Fix**: Warn the user clearly when critical columns are missing and require them to either provide the data or explicitly acknowledge the defaults being used.
+
+---
+
+### Priority 2 — Fix Before Real Use
+
+#### GPT-4 Receives Insufficient Data
+- **Only summary stats are sent**: GPT-4 receives a text summary of the suburb dataset (price range, yield range, column names) rather than the actual suburb rows. It is recommending suburbs without seeing suburb-level data.
+- **Fix**: Send the full suburb dataset (or a structured, row-level representation) to GPT-4 so its recommendations are grounded in real data.
+
+#### Brittle JSON Parsing from GPT-4
+- **Regex-based extraction**: GPT-4 responses are parsed using `re.search(r'\{.*\}', content, re.DOTALL)`. This will silently fail or produce incorrect results if GPT-4 wraps the JSON in markdown, adds commentary, or returns nested structures.
+- **Fix**: Use OpenAI's structured output / function calling feature to enforce a strict response schema, eliminating fragile string parsing.
+
+#### No Multi-Dataset Support
+- **Single file upload only**: The app accepts one file at a time. If a user uploads a second file it replaces the first. There is no mechanism to combine suburb rankings, property history, and demographic data from different sources.
+- **Fix**: Add multi-file upload support with a defined join key (`Suburb + State`), dataset type tagging (rankings vs history vs demographics), a merge strategy, and conflict resolution for overlapping columns.
+
+#### Misleading Feature Importance
+- **Reflects your own weights, not real signal**: Because the ML target is a manual formula, the feature importances reported will always mirror the weights you hardcoded. Showing this to users as "ML-identified key factors" is misleading.
+- **Fix**: Remove feature importance reporting until a genuine supervised model is in place, or clearly label the current output as "configured scoring weights" rather than learned feature importance.
+
+---
+
+### Priority 3 — Fix Before Production
+
+#### Mock Property Data
+- **Domain and REA APIs are stubs**: All property listings are generated with `numpy.random`. The `property_finder.py` service has API endpoint URLs defined but never calls them (`mock_data_enabled = True`).
+- **Fix**: Integrate real property listing APIs (Domain, REA, or CoreLogic) or clearly document that the platform requires the user to supply their own data export.
+
+#### No Persistent Storage
+- **Session state only**: All data lives in `st.session_state` and is lost on page refresh. The `DATABASE_URL` and `REDIS_URL` environment variables are configured but never used.
+- **Fix**: Implement a persistence layer (SQLite for development, PostgreSQL for production) to store customer profiles, uploaded datasets, and recommendation results.
+
+#### Debug Output Left in Production Code
+- **`st.write()` debug calls**: `openai_service.py` and `document_processor.py` contain `st.write()` statements that print raw document content and stack traces directly into the UI.
+- **Fix**: Remove all debug `st.write()` calls and replace with structured logging.
+
+#### UI Logic Inside Service Layer
+- **Streamlit imports in business logic**: `ml_recommender.py` and `openai_service.py` import and call Streamlit (`st.error()`, `st.write()`, `st.warning()`) directly. Services should have no knowledge of the UI layer.
+- **Fix**: Remove all Streamlit calls from service and model files. Raise exceptions or return error objects that the page layer handles and displays.
+
+#### No Rate Limiting on OpenAI Calls
+- **Unbounded API usage**: Every recommendation run makes multiple GPT-4 calls with no throttling, retry backoff, or cost controls.
+- **Fix**: Add rate limiting, token usage tracking, and error handling for quota exceeded / rate limit responses.
+
+---
+
+### Priority 4 — Clean Up
+
+#### Duplicate Components
+- **Incomplete refactor**: Both `sidebar.py` / `clean_sidebar.py` and `home.py` / `clean_home.py` exist simultaneously. The `clean_` versions appear to be replacements that were never fully migrated.
+- **Fix**: Remove the old versions and consolidate to the `clean_` variants.
+
+#### Stale Files
+- **`mcp_agent_old.py`**: An old version of the chat agent that is no longer used but still present in the codebase.
+- **Fix**: Delete the file.
+
+#### Dead Configuration
+- **Unused environment variables**: `DATABASE_URL`, `REDIS_URL`, `GOOGLE_MAPS_API_KEY`, and email settings are defined in `.env.example` and `config.py` but never referenced in the application code.
+- **Fix**: Remove unused config keys or implement the features they were intended for.

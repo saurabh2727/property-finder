@@ -41,6 +41,33 @@ def initialize_session_state():
     if 'data_uploaded' not in st.session_state:
         st.session_state.data_uploaded = False
 
+    # Multi-source data fetching
+    if 'raw_fetched_datasets' not in st.session_state:
+        st.session_state.raw_fetched_datasets = {}
+
+    if 'fetch_status' not in st.session_state:
+        st.session_state.fetch_status = {}  # {source_key: "pending"|"fetching"|"complete"|"failed"}
+
+    if 'data_source_mode' not in st.session_state:
+        st.session_state.data_source_mode = None  # "upload" | "api" | "hybrid"
+
+    if 'active_alt_form' not in st.session_state:
+        st.session_state.active_alt_form = None  # "api" | "manual" | None
+
+    if 'domain_api_key' not in st.session_state:
+        try:
+            from config.config import DOMAIN_API_KEY
+            st.session_state.domain_api_key = DOMAIN_API_KEY
+        except Exception:
+            st.session_state.domain_api_key = None
+
+    # ML model state
+    if 'ml_recommender' not in st.session_state:
+        st.session_state.ml_recommender = None
+
+    if 'ml_results' not in st.session_state:
+        st.session_state.ml_results = None
+
     # Analysis with persistence check
     if 'filtered_suburbs' not in st.session_state:
         st.session_state.filtered_suburbs = None
@@ -289,6 +316,35 @@ def save_suburb_data(data):
     st.session_state.suburb_data = data
     st.session_state.data_uploaded = True
     backup_session_data()
+
+
+def save_raw_dataset(source_key: str, df) -> None:
+    """Stage a fetched dataset before merging into suburb_data."""
+    if 'raw_fetched_datasets' not in st.session_state:
+        st.session_state.raw_fetched_datasets = {}
+    if 'fetch_status' not in st.session_state:
+        st.session_state.fetch_status = {}
+    st.session_state.raw_fetched_datasets[source_key] = df
+    st.session_state.fetch_status[source_key] = "complete"
+
+
+def get_raw_dataset(source_key: str):
+    """Retrieve a staged fetched dataset."""
+    return st.session_state.get('raw_fetched_datasets', {}).get(source_key)
+
+
+def set_fetch_status(source_key: str, status: str) -> None:
+    """Update fetch status for a source. Status: pending|fetching|complete|failed"""
+    if 'fetch_status' not in st.session_state:
+        st.session_state.fetch_status = {}
+    st.session_state.fetch_status[source_key] = status
+
+
+def clear_raw_datasets() -> None:
+    """Clear all staged fetched datasets."""
+    st.session_state.raw_fetched_datasets = {}
+    st.session_state.fetch_status = {}
+
 
 def save_recommendations(recommendations):
     """Save recommendations and create backup"""

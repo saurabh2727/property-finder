@@ -94,8 +94,11 @@ def render_filtering_stage(df, customer_profile):
         st.markdown("#### 💰 Budget Filters")
 
         # Price range
-        if 'Median Price' in df.columns:
-            price_min, price_max = int(df['Median Price'].min()), int(df['Median Price'].max())
+        if 'Median Price' in df.columns and df['Median Price'].dropna().shape[0] > 0:
+            price_min = int(df['Median Price'].dropna().min())
+            price_max = int(df['Median Price'].dropna().max())
+            if price_min == price_max:
+                price_max = price_min + 10000
 
             # Get customer preferred range
             customer_price = customer_profile.get('property_preferences', {}).get('price_range', {})
@@ -131,8 +134,11 @@ def render_filtering_stage(df, customer_profile):
             )
 
         # Rental yield filter
-        if 'Rental Yield on Houses' in df.columns:
-            yield_min, yield_max = float(df['Rental Yield on Houses'].min()), float(df['Rental Yield on Houses'].max())
+        if 'Rental Yield on Houses' in df.columns and df['Rental Yield on Houses'].dropna().shape[0] > 0:
+            yield_min = float(df['Rental Yield on Houses'].dropna().min())
+            yield_max = float(df['Rental Yield on Houses'].dropna().max())
+            if yield_min == yield_max:
+                yield_max = yield_min + 1.0
 
             customer_target_yield = customer_profile.get('investment_goals', {}).get('target_yield', '4.0')
             try:
@@ -169,8 +175,10 @@ def render_filtering_stage(df, customer_profile):
             )
 
         # Distance to CBD
-        if 'Distance (km) to CBD' in df.columns:
-            distance_max = int(df['Distance (km) to CBD'].max())
+        if 'Distance (km) to CBD' in df.columns and df['Distance (km) to CBD'].dropna().shape[0] > 0:
+            distance_max = int(df['Distance (km) to CBD'].dropna().max())
+            if distance_max == 0:
+                distance_max = 100
 
             # Get customer preference
             cbd_importance = customer_profile.get('lifestyle_factors', {}).get('proximity_to_cbd', 'Medium').lower()

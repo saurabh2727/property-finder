@@ -6,11 +6,19 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, r2_score
 import warnings
 warnings.filterwarnings('ignore')
-import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime
 import logging
+
+# Column name constants from schema — avoids hardcoding strings throughout
+try:
+    from services.data_fetcher.column_schema import (
+        validate_dataframe as _validate_df,
+    )
+    _SCHEMA_AVAILABLE = True
+except ImportError:
+    _SCHEMA_AVAILABLE = False
 
 # SHAP imports with error handling
 try:
@@ -18,7 +26,6 @@ try:
     SHAP_AVAILABLE = True
 except ImportError:
     SHAP_AVAILABLE = False
-    st.warning("SHAP not available. Install with: pip install shap")
 
 class PropertyRecommendationEngine:
     """Machine Learning-based property recommendation system with explainability"""
@@ -75,31 +82,90 @@ class PropertyRecommendationEngine:
 
         # Price-to-income ratios if population data available
         if 'Population' in df.columns and 'Median Price' in df.columns:
-            df['Price_per_Capita'] = df['Median Price'] / (df['Population'] + 1)
+            _price = pd.to_numeric(df['Median Price'], errors='coerce')
+            _pop = pd.to_numeric(df['Population'], errors='coerce').fillna(0)
+            df['Price_per_Capita'] = _price / (_pop + 1)
 
         # Investment attractiveness score
         if 'Rental Yield on Houses' in df.columns and 'Median Price' in df.columns:
-            df['Investment_Score'] = (df['Rental Yield on Houses'] / 100) * 1000000 / (df['Median Price'] + 1)
+            _yield = pd.to_numeric(df['Rental Yield on Houses'], errors='coerce')
+            _price = pd.to_numeric(df['Median Price'], errors='coerce')
+            df['Investment_Score'] = (_yield / 100) * 1000000 / (_price.replace(0, np.nan).fillna(1))
 
         # Distance categories
         if 'Distance (km) to CBD' in df.columns:
-            df['Distance_Category'] = pd.cut(
-                df['Distance (km) to CBD'],
-                bins=[0, 10, 25, 50, 100],
-                labels=['Inner', 'Middle', 'Outer', 'Regional']
-            ).astype(str)
+            _dist = pd.to_numeric(df['Distance (km) to CBD'], errors='coerce')
+            if _dist.notna().any():
+                df['Distance_Category'] = pd.cut(
+                    _dist,
+                    bins=[0, 10, 25, 50, 100],
+                    labels=['Inner', 'Middle', 'Outer', 'Regional']
+                ).astype(str)
 
         # Price categories
         if 'Median Price' in df.columns:
-            df['Price_Category'] = pd.cut(
-                df['Median Price'],
-                bins=[0, 500000, 800000, 1200000, float('inf')],
-                labels=['Budget', 'Mid', 'Premium', 'Luxury']
-            ).astype(str)
+            _price = pd.to_numeric(df['Median Price'], errors='coerce')
+            if _price.notna().any():
+                df['Price_Category'] = pd.cut(
+                    _price,
+                    bins=[0, 500000, 800000, 1200000, float('inf')],
+                    labels=['Budget', 'Mid', 'Premium', 'Luxury']
+                ).astype(str)
 
         # Growth potential indicator
         if '10 yr Avg. Annual Growth' in df.columns:
             df['High_Growth'] = (df['10 yr Avg. Annual Growth'] > df['10 yr Avg. Annual Growth'].median()).astype(int)
+
+        # ABS-enriched features (present when data fetched from APIs)
+        if 'seifa_irsd_score' in df.columns:
+            df['Socioeconomic_Score'] = pd.to_numeric(df['seifa_irsd_score'], errors='coerce') / 1000
+
+        if 'seifa_irsad_decile' in df.columns:
+            df['Advantage_Decile'] = pd.to_numeric(df['seifa_irsad_decile'], errors='coerce')
+
+        if 'median_personal_income_weekly' in df.columns and 'Median Price' in df.columns:
+            annual_income = pd.to_numeric(df['median_personal_income_weekly'], errors='coerce') * 52
+            df['Price_to_Income_Ratio'] = (
+                pd.to_numeric(df['Median Price'], errors='coerce') /
+                annual_income.replace(0, np.nan)
+            )
+
+        if 'median_rent_weekly_actual' in df.columns and 'Median Price' in df.columns:
+            df['Actual_Gross_Yield'] = (
+                pd.to_numeric(df['median_rent_weekly_actual'], errors='coerce') * 52 /
+                pd.to_numeric(df['Median Price'], errors='coerce').replace(0, np.nan)
+            )
+
+        if 'owner_occupied_pct' in df.columns:
+            df['Owner_Occupier_Ratio'] = pd.to_numeric(df['owner_occupied_pct'], errors='coerce') / 100
+
+        if 'pop_growth_rate_5yr' in df.columns:
+            df['Population_Growth_Rate'] = pd.to_numeric(df['pop_growth_rate_5yr'], errors='coerce')
+
+        # School quality from ACARA ICSEA scores (0-10 scale)
+        if 'school_quality_score' in df.columns:
+            df['School_Quality'] = pd.to_numeric(df['school_quality_score'], errors='coerce')
+        elif 'school_icsea_median' in df.columns:
+            df['School_Quality'] = (
+                (pd.to_numeric(df['school_icsea_median'], errors='coerce') - 800) / 400 * 10
+            ).clip(0, 10)
+
+        # Domain rental estimate vs listed yield (arbitrage signal)
+        if 'domain_median_rental_estimate' in df.columns and 'Median Price' in df.columns:
+            df['Domain_Gross_Yield'] = (
+                pd.to_numeric(df['domain_median_rental_estimate'], errors='coerce') * 52 /
+                pd.to_numeric(df['Median Price'], errors='coerce').replace(0, pd.NA)
+            )
+
+        # Domain listing supply (high count = more choice but also more supply pressure)
+        if 'domain_listing_count' in df.columns:
+            df['Listing_Supply_Index'] = pd.to_numeric(df['domain_listing_count'], errors='coerce').rank(pct=True)
+
+        if 'total_approvals_12m' in df.columns and 'Population' in df.columns:
+            pop = pd.to_numeric(df['Population'], errors='coerce').replace(0, np.nan)
+            df['Approvals_per_1000_Pop'] = (
+                pd.to_numeric(df['total_approvals_12m'], errors='coerce') / pop * 1000
+            )
 
         return df
 
@@ -118,11 +184,11 @@ class PropertyRecommendationEngine:
             try:
                 min_price = float(str(price_range['min']).replace('$', '').replace(',', ''))
                 max_price = float(str(price_range['max']).replace('$', '').replace(',', ''))
-
+                _price = pd.to_numeric(df['Median Price'], errors='coerce').fillna((min_price + max_price) / 2)
                 df['Budget_Alignment'] = np.where(
-                    (df['Median Price'] >= min_price) & (df['Median Price'] <= max_price),
+                    (_price >= min_price) & (_price <= max_price),
                     1.0,
-                    np.maximum(0, 1 - abs(df['Median Price'] - (min_price + max_price) / 2) / ((max_price - min_price) / 2))
+                    np.maximum(0, 1 - abs(_price - (min_price + max_price) / 2) / ((max_price - min_price) / 2 + 1))
                 )
             except (ValueError, TypeError):
                 df['Budget_Alignment'] = 0.5
@@ -132,7 +198,8 @@ class PropertyRecommendationEngine:
         if 'Rental Yield on Houses' in df.columns:
             try:
                 target = float(str(target_yield).replace('%', ''))
-                df['Yield_Alignment'] = 1 / (1 + abs(df['Rental Yield on Houses'] - target))
+                _yield = pd.to_numeric(df['Rental Yield on Houses'], errors='coerce').fillna(target)
+                df['Yield_Alignment'] = 1 / (1 + abs(_yield - target))
             except (ValueError, TypeError):
                 df['Yield_Alignment'] = 0.5
 
@@ -171,6 +238,18 @@ class PropertyRecommendationEngine:
             return False
 
         try:
+            # Log which schema columns are present so missing data is visible
+            if _SCHEMA_AVAILABLE:
+                validation = _validate_df(df)
+                if validation["missing_required"]:
+                    self.logger.warning(
+                        f"Missing required columns: {validation['missing_required']}"
+                    )
+                self.logger.info(
+                    f"Schema coverage: {len(validation['present'])} known columns present, "
+                    f"{validation['missing_optional_count']} optional columns absent"
+                )
+
             # Prepare features
             df_features = self.prepare_features(df, customer_profile)
 
@@ -261,39 +340,74 @@ class PropertyRecommendationEngine:
             return False
 
     def _create_investment_target(self, df):
-        """Create composite investment attractiveness target"""
+        """
+        Create investment attractiveness target from externally-sourced signals.
 
-        target_components = []
+        Uses ABS-derived columns (SEIFA, ERP, Census, Building Approvals) when
+        available so the target is independent of the input features (Rental Yield,
+        Growth Rate, Vacancy Rate). This avoids the circular logic of training a
+        model to predict a formula derived from its own input features.
 
-        # Rental yield component
-        if 'Rental Yield on Houses' in df.columns:
-            yield_norm = (df['Rental Yield on Houses'] - df['Rental Yield on Houses'].min()) / \
-                        (df['Rental Yield on Houses'].max() - df['Rental Yield on Houses'].min() + 1e-6)
-            target_components.append(yield_norm * 0.3)
+        Falls back to a census-derived affordability signal if ABS enrichment
+        columns are not present.
+        """
+        target = pd.Series(0.5, index=df.index, dtype=float)
+        components_used = []
 
-        # Growth component
-        if '10 yr Avg. Annual Growth' in df.columns:
-            growth_norm = (df['10 yr Avg. Annual Growth'] - df['10 yr Avg. Annual Growth'].min()) / \
-                         (df['10 yr Avg. Annual Growth'].max() - df['10 yr Avg. Annual Growth'].min() + 1e-6)
-            target_components.append(growth_norm * 0.25)
+        # Component 1: Socioeconomic advantage (SEIFA IRSAD decile — higher = more advantaged)
+        # Source: ABS SEIFA 2021 — independent of yield/growth input features
+        if 'seifa_irsad_decile' in df.columns:
+            irsad = pd.to_numeric(df['seifa_irsad_decile'], errors='coerce').fillna(5)
+            target += (irsad / 10) * 0.35
+            components_used.append('seifa_irsad_decile')
 
-        # Vacancy rate component (lower is better)
-        if 'Vacancy Rate' in df.columns:
-            vacancy_inv = 1 - ((df['Vacancy Rate'] - df['Vacancy Rate'].min()) / \
-                              (df['Vacancy Rate'].max() - df['Vacancy Rate'].min() + 1e-6))
-            target_components.append(vacancy_inv * 0.2)
+        # Component 2: Population growth rate (5yr CAGR from ABS ERP)
+        # High growth = demand pressure = investment opportunity
+        if 'pop_growth_rate_5yr' in df.columns:
+            growth = pd.to_numeric(df['pop_growth_rate_5yr'], errors='coerce').fillna(0)
+            growth_norm = (growth.clip(-2, 5) + 2) / 7  # normalise to ~0-1
+            target += growth_norm * 0.25
+            components_used.append('pop_growth_rate_5yr')
 
-        # Customer preference components
-        if 'Budget_Alignment' in df.columns:
-            target_components.append(df['Budget_Alignment'] * 0.15)
+        # Component 3: New supply signal (building approvals)
+        # Moderate approvals signal active demand; very high = oversupply risk
+        if 'total_approvals_12m' in df.columns:
+            approvals = pd.to_numeric(df['total_approvals_12m'], errors='coerce').fillna(0)
+            approvals_pct = approvals.rank(pct=True)
+            # Penalise extremes (no approvals = no demand; too many = oversupply)
+            supply_score = 1 - abs(approvals_pct - 0.5) * 2
+            target += supply_score * 0.20
+            components_used.append('total_approvals_12m')
 
-        if 'Yield_Alignment' in df.columns:
-            target_components.append(df['Yield_Alignment'] * 0.1)
+        # Component 4: Affordability stress from Census
+        # Lower rent-to-income ratio = more affordable = higher demand pool
+        # Uses Census G02 columns, not the yield feature from uploaded data
+        if 'median_rent_weekly_census' in df.columns and 'median_personal_income_weekly' in df.columns:
+            rent = pd.to_numeric(df['median_rent_weekly_census'], errors='coerce')
+            income = pd.to_numeric(df['median_personal_income_weekly'], errors='coerce')
+            ratio = (rent / income.replace(0, np.nan)).clip(0.1, 0.7)
+            affordability = 1 - (ratio - 0.1) / 0.6
+            target += affordability.fillna(0.5) * 0.20
+            components_used.append('census_affordability')
 
-        if target_components:
-            return np.sum(target_components, axis=0)
-        else:
-            return np.random.random(len(df))  # Fallback
+        # Fallback: if no ABS enrichment available, use owner-occupier ratio
+        # as a weak demand proxy (high owner-occupier areas tend to hold value)
+        if not components_used:
+            if 'owner_occupied_pct' in df.columns:
+                occ = pd.to_numeric(df['owner_occupied_pct'], errors='coerce').fillna(50)
+                target = (occ / 100).clip(0, 1)
+                components_used.append('owner_occupied_pct_fallback')
+            else:
+                # No external signals available — return uniform scores
+                # The model will effectively rank on feature correlations only
+                self.logger.warning(
+                    "No ABS enrichment columns found. ML target is uniform — "
+                    "consider enriching data via the 'Fetch from APIs' option."
+                )
+                return np.full(len(df), 0.5)
+
+        self.logger.info(f"Investment target built from: {components_used}")
+        return target.clip(0, 1).values
 
     def predict_recommendations(self, df, customer_profile, top_n=10):
         """Generate property recommendations"""
