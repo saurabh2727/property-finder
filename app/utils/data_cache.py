@@ -25,9 +25,19 @@ class DataCache:
         "abs_building_approvals": 168,
         "nsw_vg_sales": 168,
         "vic_sales": 168,
+        "qld_sales": 168,               # 7 days
         "rental_data": 168,
         "domain_listings": 1,           # 1 hour — live listings
         "sa2_concordance": 2160,        # 90 days — near-static
+        # New sources
+        "acara_schools": 720,           # 30 days — annual ACARA release
+        "amenities": 720,               # 30 days — OSM data
+        "transport": 720,               # 30 days — OSM data
+        "healthcare": 720,              # 30 days — OSM + AIHW
+        "crime": 720,                   # 30 days — annual releases
+        "employment": 720,              # 30 days — 2021 Census, static
+        "flood_risk": 2160,             # 90 days — near-static hazard data
+        "walkability": 720,             # 30 days — OSM data
     }
 
     def __init__(self):

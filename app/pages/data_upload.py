@@ -320,7 +320,7 @@ def display_validation_results(validation_results, df):
                 st.write(f"**{col}:** {dtype}")
 
 def show_api_connection_form():
-    """Fetch suburb data from free Australian government APIs."""
+    """Fetch suburb data from free Australian government APIs — all data categories."""
     import concurrent.futures
     from utils.data_cache import DataCache
     from services.data_fetcher.sa2_concordance import SA2Concordance
@@ -330,128 +330,207 @@ def show_api_connection_form():
     from services.data_fetcher.abs_census_fetcher import ABSCensusFetcher
     from services.data_fetcher.nsw_sales_fetcher import NSWSalesFetcher
     from services.data_fetcher.vic_sales_fetcher import VICSalesFetcher
+    from services.data_fetcher.qld_sales_fetcher import QLDSalesFetcher
     from services.data_fetcher.rental_data_fetcher import RentalDataFetcher
     from services.data_fetcher.acara_schools_fetcher import ACARASchoolsFetcher
     from services.data_fetcher.domain_fetcher import DomainListingsFetcher, DomainRentalAVMFetcher
+    from services.data_fetcher.amenities_fetcher import AmenitiesFetcher
+    from services.data_fetcher.transport_fetcher import TransportFetcher
+    from services.data_fetcher.healthcare_fetcher import HealthcareFetcher
+    from services.data_fetcher.crime_fetcher import CrimeFetcher
+    from services.data_fetcher.employment_fetcher import EmploymentFetcher
+    from services.data_fetcher.flood_risk_fetcher import FloodRiskFetcher
+    from services.data_fetcher.walkability_fetcher import WalkabilityFetcher
     from services.data_fetcher.data_merger import DataMerger
     from utils.session_state import save_raw_dataset, set_fetch_status, save_suburb_data, update_workflow_step
 
-    st.subheader("Fetch from Australian Government APIs")
-    st.info(
-        "These sources are free and require no API keys. "
-        "Data is cached locally so subsequent loads are instant."
-    )
+    st.subheader("🌐 Connect to Data Sources")
+    st.caption("Free Australian government + OpenStreetMap sources. Data is cached locally — subsequent loads are instant.")
 
     cache = DataCache()
 
-    # Cache status
-    with st.expander("Cache Status", expanded=False):
-        cached = cache.list_cached()
-        if cached:
-            cache_df = pd.DataFrame(cached)
-            cache_df["status"] = cache_df["fresh"].map({True: "Fresh", False: "Stale"})
-            st.dataframe(cache_df[["key", "fetched_at", "age_hours", "ttl_hours", "status", "row_count"]], use_container_width=True)
-        else:
-            st.write("No cached data yet.")
+    # ── Build suburb list from existing session data (used by OSM fetchers) ──
+    suburb_list = []
+    existing_df = st.session_state.get('suburb_data')
+    if existing_df is not None:
+        sc = "Suburb" if "Suburb" in existing_df.columns else "suburb"
+        stc = "State" if "State" in existing_df.columns else "state"
+        if sc in existing_df.columns and stc in existing_df.columns:
+            suburb_list = (
+                existing_df[[sc, stc]].dropna()
+                .rename(columns={sc: "suburb", stc: "state"})
+                .drop_duplicates()
+                .to_dict("records")
+            )
 
-    st.markdown("---")
-
-    st.info(
-        "**What each source provides:**\n"
-        "- **ABS sources** (SEIFA, ERP, Census) → demographic & socioeconomic enrichment only — no property prices\n"
-        "- **Domain API** → listing prices & rental estimates (requires active API key)\n"
-        "- **For Median Price / Rental Yield data**: upload a CSV file (e.g. HtAG export) using the File Upload tab above, "
-        "then use API fetch to enrich it with ABS signals"
+    osm_note = (
+        f"Queries OpenStreetMap per suburb. {len(suburb_list)} suburbs loaded from current dataset. "
+        "First fetch is slow (~1–2s/suburb) but cached for 30 days."
+        if suburb_list else
+        "Upload or load a suburb dataset first so OSM fetchers know which suburbs to query."
     )
 
-    # Source selection
-    st.markdown("**Select data sources to fetch:**")
+    # ── Category status panel ────────────────────────────────────────────────
+    cached_keys = {c["key"]: c for c in cache.list_cached()}
 
-    col1, col2 = st.columns(2)
-    with col1:
-        use_seifa = st.checkbox("ABS SEIFA 2021 — Socioeconomic indexes", value=True,
-                                 help="Socioeconomic advantage/disadvantage scores per SA2. No API key required.")
-        use_erp = st.checkbox("ABS Population (ERP) — Resident population by SA2", value=True,
-                               help="Estimated Resident Population, 2001–present. Used for population growth rate.")
-        use_building = st.checkbox("ABS Building Approvals — New dwelling approvals", value=True,
-                                    help="Monthly new dwelling approvals by SA2 from 2016. Supply indicator.")
-        use_census = st.checkbox("ABS Census 2021 — Income, tenure, dwelling types", value=False,
-                                  help="Requires manual download of ABS DataPack ZIP. See instructions below.")
+    def _status_badge(key):
+        """Return (icon, label, colour_hint) for a cache key."""
+        info = cached_keys.get(key)
+        if info is None:
+            return "⬜", "Not fetched", "grey"
+        if info["fresh"] and info["row_count"] and int(str(info["row_count"]).replace("?", "0") or 0) > 0:
+            return "🟢", f"{info['row_count']:,} rows  ·  {info['fetched_at']}", "green"
+        if not info["fresh"]:
+            return "🟡", f"Stale  ·  {info['row_count']} rows  ·  {info['fetched_at']}", "orange"
+        return "🔴", "Empty (0 rows)", "red"
 
-    with col2:
-        use_nsw_sales = st.checkbox("NSW Property Sales — Valuer General", value=False,
-                                     help="⚠️ NSW VG bulk download endpoint currently unavailable (HTTP 500). Will return empty — upload CSV manually instead.")
-        use_vic_sales = st.checkbox("VIC Property Sales — land.vic.gov.au", value=False,
-                                     help="Attempts to fetch VIC median prices via CKAN discovery. May return empty if file is Cloudflare-protected.")
-        use_rental = st.checkbox("Rental Data — NSW & VIC government", value=False,
-                                  help="Median weekly rent by suburb/postcode from state governments.")
-        use_schools = st.checkbox("School Quality — ACARA My School (ICSEA scores)", value=True,
-                                   help="Free school quality scores per suburb from ACARA. No API key required.")
-        use_domain_listings = st.checkbox("Domain Listings — current listings (sandbox, free)", value=False,
-                                           help="Requires free Domain developer API key. 500 calls/day limit.")
-        use_domain_rental = st.checkbox("Domain Rental AVM — rental estimates (free)", value=False,
-                                         help="Requires free Domain developer API key. Unlimited calls.")
+    # Define all categories with their source keys and metadata
+    ALL_CATEGORIES = [
+        {
+            "label": "🏠 Demographics & Socioeconomic",
+            "sources": [
+                ("seifa",              "ABS SEIFA 2021",            "IRSD, IRSAD, IEO, IER deciles per SA2",                       True,  False),
+                ("erp",                "ABS Population (ERP)",      "Estimated Resident Population + 5yr growth rate",             True,  False),
+                ("census",             "ABS Census 2021",           "Household income, tenure, dwelling types per SA2",            False, True),
+            ],
+        },
+        {
+            "label": "📈 Property Market",
+            "sources": [
+                ("nsw_sales",          "NSW Property Sales",        "Median sale prices from NSW Valuer General",                  False, False),
+                ("vic_sales",          "VIC Property Sales",        "Median sale prices from VIC Consumer Affairs",                False, False),
+                ("qld_sales",          "QLD Property Sales",        "Median sale prices from QLD Titles Registry",                 False, False),
+                ("rental",             "Rental Data (NSW & VIC)",   "Median weekly rent from state bond boards",                   False, False),
+                ("domain_listings",    "Domain Listings",           "Active listings, median list price (API key required)",       False, False),
+                ("domain_rental_avm",  "Domain Rental AVM",         "Rental estimates per suburb (API key required)",              False, False),
+            ],
+        },
+        {
+            "label": "🏫 Education",
+            "sources": [
+                ("acara_schools",      "ACARA My School (ICSEA)",   "School quality score, ICSEA median, school count per suburb", True,  False),
+            ],
+        },
+        {
+            "label": "🚌 Infrastructure & Transport",
+            "sources": [
+                ("transport",          "Public Transport (OSM)",    "Train stations, bus stops, tram stops per suburb",            True,  False),
+                ("building_approvals", "ABS Building Approvals",    "New dwelling approvals — housing supply indicator",           True,  False),
+            ],
+        },
+        {
+            "label": "☕ Lifestyle & Amenities",
+            "sources": [
+                ("amenities",          "Amenities (OSM)",           "Cafes, restaurants, supermarkets, parks, gyms per suburb",    True,  False),
+                ("walkability",        "Walkability (OSM)",         "Walk Score (0–100) and bike infrastructure score",            True,  False),
+            ],
+        },
+        {
+            "label": "🏥 Healthcare",
+            "sources": [
+                ("healthcare",         "Healthcare (OSM + AIHW)",   "Hospitals, GP clinics, pharmacies per suburb",                True,  False),
+            ],
+        },
+        {
+            "label": "🔒 Safety & Crime",
+            "sources": [
+                ("crime",              "Crime (BOCSAR / VIC)",      "Offence rate per 1,000 population (NSW & VIC LGA level)",     True,  False),
+            ],
+        },
+        {
+            "label": "💼 Employment",
+            "sources": [
+                ("employment",         "Employment (ABS Census)",   "Unemployment rate + labour force participation per SA2",      True,  False),
+            ],
+        },
+        {
+            "label": "🌊 Natural Hazard Risk",
+            "sources": [
+                ("flood_risk",         "Flood & Bushfire Risk",     "Flood risk score + bushfire risk score per suburb/SA2",       True,  False),
+            ],
+        },
+    ]
 
+    # ── Render category panels with status + checkboxes ──────────────────────
+    st.markdown("### Data Source Categories")
+    st.caption("Green = data available and fresh  ·  Yellow = stale  ·  Red = empty  ·  Grey = not fetched yet")
+
+    selections = {}  # key → bool
+
+    for cat in ALL_CATEGORIES:
+        with st.expander(cat["label"], expanded=True):
+            for (key, name, desc, default, needs_manual) in cat["sources"]:
+                icon, badge_text, _ = _status_badge(key)
+                col_check, col_info = st.columns([1, 3])
+                with col_check:
+                    osm_sources = {"amenities", "transport", "healthcare", "walkability"}
+                    disabled = (key in osm_sources and not suburb_list)
+                    selections[key] = st.checkbox(
+                        name,
+                        value=default and not needs_manual,
+                        key=f"src_{key}",
+                        disabled=disabled,
+                        help=f"{desc}\n\n{'⚠️ Upload a suburb dataset first to enable OSM queries.' if disabled else ''}",
+                    )
+                with col_info:
+                    st.markdown(
+                        f"<small style='color:grey'>{desc}</small><br>"
+                        f"<small>{icon} {badge_text}</small>",
+                        unsafe_allow_html=True,
+                    )
+                    if needs_manual:
+                        st.caption("⚠️ Requires manual DataPack download — see instructions below.")
+
+    # ── Domain API key ────────────────────────────────────────────────────────
+    use_domain = selections.get("domain_listings") or selections.get("domain_rental_avm")
     domain_key = None
-    if use_domain_listings or use_domain_rental:
+    if use_domain:
+        st.markdown("---")
         domain_key = st.text_input(
             "Domain API Key",
             type="password",
             value=st.session_state.get('domain_api_key', '') or '',
-            help="Register free at https://developer.domain.com.au"
+            help="Register free at developer.domain.com.au — 500 listing calls/day",
         )
         if domain_key:
             st.session_state.domain_api_key = domain_key
         else:
             st.warning("Domain API key required for Domain sources.")
 
-    if use_census:
+    # ── ABS Census manual download warning ───────────────────────────────────
+    if selections.get("census"):
         from pathlib import Path as _Path
-        _raw_dir = _Path(__file__).parent.parent.parent / "data" / "raw"
-        zip_path = _raw_dir / "abs_census_2021_gcp_sa2.zip"
+        zip_path = _Path(__file__).parent.parent.parent / "data" / "raw" / "abs_census_2021_gcp_sa2.zip"
         if not zip_path.exists():
             st.warning(
                 f"Census DataPack not found at `{zip_path}`.\n\n"
                 "**To download:**\n"
-                "1. Go to https://www.abs.gov.au/census/find-census-data/datapacks\n"
+                "1. Go to abs.gov.au → Census → DataPacks\n"
                 "2. Select: 2021 → General Community Profile → SA2 → All of Australia\n"
-                f"3. Save the ZIP as: `{zip_path}`"
+                f"3. Save ZIP as: `{zip_path}`"
             )
 
+    # ── OSM note ─────────────────────────────────────────────────────────────
+    osm_selected = any(selections.get(k) for k in ("amenities", "transport", "healthcare", "walkability"))
+    if osm_selected:
+        st.info(f"**OpenStreetMap sources:** {osm_note}")
+
+    st.markdown("---")
     force_refresh = st.checkbox("Force refresh (ignore cache)", value=False)
 
-    if st.button("Fetch Selected Sources", type="primary"):
-        selected = {
-            "seifa": use_seifa,
-            "erp": use_erp,
-            "building_approvals": use_building,
-            "census": use_census,
-            "nsw_sales": use_nsw_sales,
-            "vic_sales": use_vic_sales,
-            "rental": use_rental,
-            "acara_schools": use_schools,
-            "domain_listings": use_domain_listings and bool(domain_key),
-            "domain_rental_avm": use_domain_rental and bool(domain_key),
-        }
-        selected = {k: v for k, v in selected.items() if v}
+    # ── Fetch button ──────────────────────────────────────────────────────────
+    selected_keys = {k for k, v in selections.items() if v}
+    # Remove domain sources if no key
+    if not domain_key:
+        selected_keys.discard("domain_listings")
+        selected_keys.discard("domain_rental_avm")
 
-        if not selected:
+    if st.button("🚀 Fetch Selected Sources", type="primary", disabled=not selected_keys):
+        if not selected_keys:
             st.warning("Please select at least one data source.")
             return
 
-        # Build suburb list for Domain fetchers from existing data if available
-        suburb_list = []
-        if st.session_state.get('suburb_data') is not None:
-            df_existing = st.session_state.suburb_data
-            suburb_col = "Suburb" if "Suburb" in df_existing.columns else "suburb"
-            state_col = "State" if "State" in df_existing.columns else "state"
-            if suburb_col in df_existing.columns and state_col in df_existing.columns:
-                suburb_list = df_existing[[suburb_col, state_col]].dropna().rename(
-                    columns={suburb_col: "suburb", state_col: "state"}
-                ).to_dict("records")
-
         def _fetch_domain_rental(c, api_key, suburbs):
-            """Fetch listings first, then aggregate rental AVM estimates per suburb."""
             listings_fetcher = DomainListingsFetcher(c, api_key, suburbs[:20])
             listings_df = listings_fetcher._fetch_listings_for_suburbs(suburbs[:20])
             if listings_df.empty:
@@ -460,22 +539,30 @@ def show_api_connection_form():
             return rental_fetcher.fetch_rental_estimates_for_suburbs(listings_df)
 
         fetcher_map = {
-            "seifa": lambda: ABSSEIFAFetcher(cache).fetch(force_refresh),
-            "erp": lambda: ABSERPFetcher(cache).fetch(force_refresh),
-            "building_approvals": lambda: ABSBuildingApprovalsFetcher(cache).fetch(force_refresh),
-            "census": lambda: ABSCensusFetcher(cache).fetch(force_refresh),
-            "nsw_sales": lambda: NSWSalesFetcher(cache).fetch(force_refresh),
-            "vic_sales": lambda: VICSalesFetcher(cache).fetch(force_refresh),
-            "rental": lambda: RentalDataFetcher(cache).fetch(force_refresh),
-            "acara_schools": lambda: ACARASchoolsFetcher(cache).fetch(force_refresh),
-            "domain_listings": lambda: DomainListingsFetcher(cache, domain_key, suburb_list).fetch(force_refresh),
+            "seifa":             lambda: ABSSEIFAFetcher(cache).fetch(force_refresh),
+            "erp":               lambda: ABSERPFetcher(cache).fetch(force_refresh),
+            "building_approvals":lambda: ABSBuildingApprovalsFetcher(cache).fetch(force_refresh),
+            "census":            lambda: ABSCensusFetcher(cache).fetch(force_refresh),
+            "nsw_sales":         lambda: NSWSalesFetcher(cache).fetch(force_refresh),
+            "vic_sales":         lambda: VICSalesFetcher(cache).fetch(force_refresh),
+            "qld_sales":         lambda: QLDSalesFetcher(cache).fetch(force_refresh),
+            "rental":            lambda: RentalDataFetcher(cache).fetch(force_refresh),
+            "acara_schools":     lambda: ACARASchoolsFetcher(cache).fetch(force_refresh),
+            "domain_listings":   lambda: DomainListingsFetcher(cache, domain_key, suburb_list).fetch(force_refresh),
             "domain_rental_avm": lambda: _fetch_domain_rental(cache, domain_key, suburb_list),
+            "amenities":         lambda: AmenitiesFetcher(cache, suburb_list).fetch(force_refresh),
+            "transport":         lambda: TransportFetcher(cache, suburb_list).fetch(force_refresh),
+            "healthcare":        lambda: HealthcareFetcher(cache, suburb_list).fetch(force_refresh),
+            "crime":             lambda: CrimeFetcher(cache).fetch(force_refresh),
+            "employment":        lambda: EmploymentFetcher(cache).fetch(force_refresh),
+            "flood_risk":        lambda: FloodRiskFetcher(cache).fetch(force_refresh),
+            "walkability":       lambda: WalkabilityFetcher(cache, suburb_list).fetch(force_refresh),
         }
 
         results = {}
         progress = st.progress(0)
-        status_area = st.empty()
-        total = len(selected)
+        total = len(selected_keys)
+        status_rows = {k: st.empty() for k in selected_keys}
 
         def run_fetcher(key):
             set_fetch_status(key, "fetching")
@@ -485,63 +572,102 @@ def show_api_connection_form():
                 return key, df, None
             except Exception as e:
                 set_fetch_status(key, "failed")
-                return key, None, str(e)
+                return key, pd.DataFrame(), str(e)
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
-            futures = {executor.submit(run_fetcher, k): k for k in selected}
-            completed = 0
+        # OSM fetchers must run sequentially (rate limits); others can be parallel
+        osm_keys = {"amenities", "transport", "healthcare", "walkability"} & selected_keys
+        parallel_keys = selected_keys - osm_keys
+
+        completed = 0
+        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+            futures = {executor.submit(run_fetcher, k): k for k in parallel_keys}
             for future in concurrent.futures.as_completed(futures):
                 key, df, error = future.result()
                 completed += 1
                 progress.progress(completed / total)
                 if error:
-                    status_area.error(f"{key}: failed — {error}")
+                    status_rows[key].error(f"❌ **{key}** — {error}")
                 else:
+                    n = len(df)
+                    status_rows[key].success(f"✅ **{key}** — {n:,} rows fetched") if n else status_rows[key].warning(f"⚠️ **{key}** — 0 rows (source may be unavailable)")
                     results[key] = df
-                    status_area.success(f"{key}: {len(df)} rows fetched")
+
+        # Run OSM fetchers sequentially
+        for key in osm_keys:
+            status_rows[key].info(f"🔄 **{key}** — querying OpenStreetMap…")
+            key2, df, error = run_fetcher(key)
+            completed += 1
+            progress.progress(completed / total)
+            if error:
+                status_rows[key].error(f"❌ **{key}** — {error}")
+            else:
+                n = len(df)
+                status_rows[key].success(f"✅ **{key}** — {n:,} rows") if n else status_rows[key].warning(f"⚠️ **{key}** — 0 rows")
+                results[key] = df
 
         st.session_state.raw_fetched_datasets.update(results)
-
         if results:
-            st.success(f"Fetched {len(results)} source(s) successfully.")
-            # Persist results so the Merge button (next re-run) can access them
             st.session_state._api_fetch_results = results
+            st.success(f"Fetched {len(results)}/{total} source(s). Review results above, then merge below.")
 
-    # --- Merge section (rendered every run when fetch results exist) ---
+    # ── Merge section ─────────────────────────────────────────────────────────
     fetch_results = st.session_state.get('_api_fetch_results')
     if fetch_results:
         st.markdown("---")
-        st.markdown("**Merge into suburb dataset**")
-
-        concordance = SA2Concordance(cache)
-        concordance.load()
-        merger = DataMerger(concordance)
+        st.markdown("### Merge into Suburb Dataset")
 
         base_df = st.session_state.get('suburb_data')
         if base_df is not None:
-            st.info(f"Existing uploaded dataset found ({len(base_df)} rows). Will enrich with API data.")
+            st.info(f"Base dataset: **{len(base_df)} suburbs** — API data will be joined as enrichment columns.")
+        else:
+            st.info("No base dataset loaded. The merger will attempt to build one from ABS ERP data.")
 
-        if st.button("Merge & Save Dataset", type="primary"):
-            with st.spinner("Merging datasets..."):
+        # Show what will be merged
+        merge_preview = []
+        for key, df in fetch_results.items():
+            merge_preview.append({
+                "Source": key,
+                "Rows": len(df),
+                "Columns": len(df.columns),
+                "Status": "✅ Ready" if len(df) > 0 else "⚠️ Empty",
+            })
+        st.dataframe(pd.DataFrame(merge_preview), use_container_width=True, hide_index=True)
+
+        from services.data_fetcher.sa2_concordance import SA2Concordance
+        from services.data_fetcher.data_merger import DataMerger
+
+        if st.button("🔗 Merge & Save Dataset", type="primary"):
+            with st.spinner("Merging all datasets…"):
+                concordance = SA2Concordance(cache)
+                concordance.load()
+                merger = DataMerger(concordance)
                 enriched = merger.merge(base_df, fetch_results)
                 validation = merger.validate_enriched(enriched)
 
                 save_suburb_data(enriched)
                 st.session_state.data_source_mode = "api" if base_df is None else "hybrid"
-                # Clear fetch results once merged
                 del st.session_state['_api_fetch_results']
 
-            st.success(f"Dataset ready: {len(enriched)} suburbs, {len(enriched.columns)} columns")
+            st.success(f"✅ Dataset ready — **{len(enriched)} suburbs**, **{len(enriched.columns)} columns**")
 
-            with st.expander("Enrichment Coverage", expanded=True):
-                cov_data = [{"column": k, "coverage": v} for k, v in validation["column_coverage"].items()]
-                if cov_data:
-                    st.dataframe(pd.DataFrame(cov_data), use_container_width=True)
+            # Coverage by category
+            with st.expander("📊 Enrichment Coverage by Category", expanded=True):
+                cov = validation.get("column_coverage", {})
+                for cat in ALL_CATEGORIES:
+                    cat_cols = []
+                    for (key, name, desc, _, _) in cat["sources"]:
+                        from services.data_fetcher.column_schema import columns_for_source
+                        cat_cols += [(c, cov.get(c, "—")) for c in columns_for_source(key) if c in cov]
+                    if cat_cols:
+                        st.markdown(f"**{cat['label']}**")
+                        cov_df = pd.DataFrame(cat_cols, columns=["Column", "Coverage"])
+                        st.dataframe(cov_df, use_container_width=True, hide_index=True)
+
                 for w in validation.get("warnings", []):
                     st.warning(w)
 
-            st.markdown("**Preview (first 10 rows):**")
-            st.dataframe(enriched.head(10), use_container_width=True)
+            with st.expander("Preview (first 10 rows)", expanded=False):
+                st.dataframe(enriched.head(10), use_container_width=True)
 
             update_workflow_step(3)
             if st.button("Continue to Recommendations →"):

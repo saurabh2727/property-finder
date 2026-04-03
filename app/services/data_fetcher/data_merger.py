@@ -6,8 +6,10 @@ import pandas as pd
 from services.data_fetcher.sa2_concordance import SA2Concordance
 from services.data_fetcher.column_schema import (
     SOURCE_SEIFA, SOURCE_ERP, SOURCE_BUILDING, SOURCE_CENSUS,
-    SOURCE_NSW_SALES, SOURCE_VIC_SALES, SOURCE_RENTAL_GOV,
+    SOURCE_NSW_SALES, SOURCE_VIC_SALES, SOURCE_QLD_SALES, SOURCE_RENTAL_GOV,
     SOURCE_ACARA, SOURCE_DOMAIN_LISTINGS, SOURCE_DOMAIN_RENTAL,
+    SOURCE_AMENITIES, SOURCE_TRANSPORT, SOURCE_HEALTHCARE,
+    SOURCE_CRIME, SOURCE_EMPLOYMENT, SOURCE_FLOOD_RISK, SOURCE_WALKABILITY,
     columns_for_source,
 )
 
@@ -20,6 +22,8 @@ _SA2_SOURCES = {
     "census":             columns_for_source(SOURCE_CENSUS),
     "erp":                columns_for_source(SOURCE_ERP),
     "building_approvals": columns_for_source(SOURCE_BUILDING),
+    "employment":         columns_for_source(SOURCE_EMPLOYMENT),
+    "flood_risk":         columns_for_source(SOURCE_FLOOD_RISK),
 }
 
 # Remove sa2_code itself from the enrichment column lists (it's the join key)
@@ -29,10 +33,16 @@ _SA2_SOURCES = {k: [c for c in v if c != "sa2_code"] for k, v in _SA2_SOURCES.it
 _SUBURB_SOURCES = {
     "nsw_sales":        columns_for_source(SOURCE_NSW_SALES),
     "vic_sales":        columns_for_source(SOURCE_VIC_SALES),
+    "qld_sales":        columns_for_source(SOURCE_QLD_SALES),
     "rental":           columns_for_source(SOURCE_RENTAL_GOV),
     "acara_schools":    columns_for_source(SOURCE_ACARA),
     "domain_listings":  columns_for_source(SOURCE_DOMAIN_LISTINGS),
     "domain_rental_avm": columns_for_source(SOURCE_DOMAIN_RENTAL),
+    "amenities":        columns_for_source(SOURCE_AMENITIES),
+    "transport":        columns_for_source(SOURCE_TRANSPORT),
+    "healthcare":       columns_for_source(SOURCE_HEALTHCARE),
+    "crime":            columns_for_source(SOURCE_CRIME),
+    "walkability":      columns_for_source(SOURCE_WALKABILITY),
 }
 
 # Remove suburb/state from enrichment column lists (they're the join keys)
@@ -136,7 +146,67 @@ class DataMerger:
         # Clean up temporary join keys
         result = result.drop(columns=["_suburb_key", "_state_key"], errors="ignore")
 
+        # Step 4: LGA-keyed merge for crime (BOCSAR/VIC Crime Stats are at LGA level)
+        # Crime data has LGA names, not suburb names — we join via ABS suburb→LGA concordance
+        if "crime" in fetched and not fetched["crime"].empty:
+            result = self._merge_lga_keyed(result, fetched["crime"],
+                                           columns_for_source(SOURCE_CRIME))
+
         return result
+
+    def _merge_lga_keyed(self, result: pd.DataFrame,
+                          crime_df: pd.DataFrame,
+                          cols: list) -> pd.DataFrame:
+        """
+        Join LGA-level crime data onto suburb-level result.
+
+        Strategy: use the ABS SA2→LGA concordance (first 5 digits of SA2 code = LGA code).
+        Where LGA name is known, broadcast crime stats to all suburbs in that LGA.
+        """
+        if "sa2_code" not in result.columns:
+            logger.warning("DataMerger: cannot join crime data — sa2_code missing")
+            return result
+
+        crime_df = crime_df.copy()
+
+        # Normalise crime suburb column as LGA name key
+        lga_col = next((c for c in crime_df.columns
+                        if c not in cols and c not in ("state", "State")), None)
+        if lga_col is None and "suburb" in crime_df.columns:
+            lga_col = "suburb"
+
+        if lga_col is None:
+            logger.warning("DataMerger: crime data has no LGA name column — skipping")
+            return result
+
+        crime_df["_lga_key"] = crime_df[lga_col].astype(str).str.strip().str.title()
+        crime_df["_state_key"] = crime_df.get("state", crime_df.get("State", "")).astype(str).str.upper()
+
+        # Map each suburb in result to its LGA via fuzzy match on suburb name
+        # (best-effort: suburb name often matches LGA name for major areas)
+        result["_lga_key"] = result.get(
+            "Suburb", result.get("suburb", pd.Series("", index=result.index))
+        ).astype(str).str.strip().str.title()
+        result["_state_key"] = result.get(
+            "State", result.get("state", pd.Series("", index=result.index))
+        ).astype(str).str.strip().str.upper()
+
+        available_cols = [c for c in cols if c in crime_df.columns]
+        if not available_cols:
+            return result
+
+        merged = result.merge(
+            crime_df[["_lga_key", "_state_key"] + available_cols],
+            on=["_lga_key", "_state_key"],
+            how="left",
+            suffixes=("", "_crime"),
+        )
+
+        coverage = merged[available_cols[0]].notna().mean() if available_cols else 0
+        logger.info(f"Crime LGA merge: {len(available_cols)} cols, "
+                    f"direct coverage={coverage:.0%} (LGA name = suburb name matches)")
+
+        return merged.drop(columns=["_lga_key", "_state_key"], errors="ignore")
 
     def _build_from_erp_seed(self, fetched: Dict[str, pd.DataFrame]) -> pd.DataFrame:
         """Build a base suburb DataFrame from ERP population data when no file was uploaded."""

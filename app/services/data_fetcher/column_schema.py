@@ -27,10 +27,18 @@ SOURCE_BUILDING = "abs_building_approvals"
 SOURCE_CENSUS = "abs_census"
 SOURCE_NSW_SALES = "nsw_vg_sales"
 SOURCE_VIC_SALES = "vic_sales"
+SOURCE_QLD_SALES = "qld_sales"
 SOURCE_RENTAL_GOV = "rental_government"
 SOURCE_ACARA = "acara_schools"
 SOURCE_DOMAIN_LISTINGS = "domain_listings"
 SOURCE_DOMAIN_RENTAL = "domain_rental_avm"
+SOURCE_AMENITIES = "amenities"
+SOURCE_TRANSPORT = "transport"
+SOURCE_HEALTHCARE = "healthcare"
+SOURCE_CRIME = "crime"
+SOURCE_EMPLOYMENT = "employment"
+SOURCE_FLOOD_RISK = "flood_risk"
+SOURCE_WALKABILITY = "walkability"
 
 
 @dataclass
@@ -164,6 +172,84 @@ SCHEMA: List[ColumnSpec] = [
                description="Median weekly rental estimate from Domain Rental AVM ($)"),
     ColumnSpec("domain_rental_sample_size",     [SOURCE_DOMAIN_RENTAL], default=None,
                description="Number of properties used in Domain rental AVM aggregation"),
+
+    # ── QLD Sales ─────────────────────────────────────────────────────────────
+    ColumnSpec("qld_median_sale_price", [SOURCE_QLD_SALES], default=None,
+               description="Median residential sale price from QLD Titles Registry ($)"),
+    ColumnSpec("qld_sale_count",        [SOURCE_QLD_SALES], default=None,
+               description="Number of residential sales in QLD dataset"),
+    ColumnSpec("qld_median_land_size",  [SOURCE_QLD_SALES], default=None,
+               description="Median land size from QLD sales data (m²)"),
+
+    # ── Amenities (OpenStreetMap) ──────────────────────────────────────────────
+    ColumnSpec("amenity_score",         [SOURCE_AMENITIES], default=None,
+               description="Composite lifestyle amenity score 0-10 (cafes, shops, parks, gyms)"),
+    ColumnSpec("cafe_count",            [SOURCE_AMENITIES], default=None,
+               description="Number of cafes in suburb (OSM)"),
+    ColumnSpec("supermarket_count",     [SOURCE_AMENITIES], default=None,
+               description="Number of supermarkets/groceries in suburb (OSM)"),
+    ColumnSpec("park_count",            [SOURCE_AMENITIES], default=None,
+               description="Number of parks/gardens in suburb (OSM)"),
+    ColumnSpec("restaurant_count",      [SOURCE_AMENITIES], default=None,
+               description="Number of restaurants in suburb (OSM)"),
+    ColumnSpec("gym_count",             [SOURCE_AMENITIES], default=None,
+               description="Number of gyms/fitness centres in suburb (OSM)"),
+
+    # ── Public Transport (OpenStreetMap) ──────────────────────────────────────
+    ColumnSpec("transit_score",         [SOURCE_TRANSPORT], default=None,
+               description="Public transport access score 0-10 (weighted stops: rail > bus)"),
+    ColumnSpec("train_station_count",   [SOURCE_TRANSPORT], default=None,
+               description="Number of train stations/halts in suburb (OSM)"),
+    ColumnSpec("bus_stop_count",        [SOURCE_TRANSPORT], default=None,
+               description="Number of bus stops in suburb (OSM)"),
+    ColumnSpec("tram_stop_count",       [SOURCE_TRANSPORT], default=None,
+               description="Number of tram stops in suburb (OSM)"),
+    ColumnSpec("has_train_station",     [SOURCE_TRANSPORT], default=None,
+               description="Whether suburb has at least one train/subway station"),
+
+    # ── Healthcare (OSM + AIHW) ───────────────────────────────────────────────
+    ColumnSpec("healthcare_score",      [SOURCE_HEALTHCARE], default=None,
+               description="Healthcare access score 0-10 (hospitals, GPs, pharmacies)"),
+    ColumnSpec("hospital_count",        [SOURCE_HEALTHCARE], default=None,
+               description="Number of hospitals in or near suburb"),
+    ColumnSpec("clinic_count",          [SOURCE_HEALTHCARE], default=None,
+               description="Number of GP clinics/health centres in suburb (OSM)"),
+    ColumnSpec("pharmacy_count",        [SOURCE_HEALTHCARE], default=None,
+               description="Number of pharmacies in suburb (OSM)"),
+
+    # ── Crime (BOCSAR NSW + VIC Crime Stats) ───────────────────────────────────
+    ColumnSpec("crime_risk_score",          [SOURCE_CRIME], default=None,
+               description="Crime risk score 0-10 (lower = safer), normalised from offence rate"),
+    ColumnSpec("crime_incidents_per_1000",  [SOURCE_CRIME], default=None,
+               description="Total recorded offences per 1,000 population (LGA level)"),
+    ColumnSpec("property_offences",         [SOURCE_CRIME], default=None,
+               description="Number of property-related offences (break-in, theft, robbery)"),
+
+    # ── Employment (ABS Census 2021) ───────────────────────────────────────────
+    ColumnSpec("employment_score",                  [SOURCE_EMPLOYMENT], default=None,
+               description="Employment conditions score 0-10 (lower unemployment = higher)"),
+    ColumnSpec("unemployment_rate",                 [SOURCE_EMPLOYMENT], default=None,
+               description="Unemployment rate (% of labour force) from ABS Census 2021"),
+    ColumnSpec("labour_force_participation_rate",   [SOURCE_EMPLOYMENT], default=None,
+               description="Labour force participation rate (% of working-age population)"),
+
+    # ── Flood & Bushfire Risk ──────────────────────────────────────────────────
+    ColumnSpec("flood_risk_score",      [SOURCE_FLOOD_RISK], default=None,
+               description="Flood risk score 0-10 (lower = lower risk)"),
+    ColumnSpec("bushfire_risk_score",   [SOURCE_FLOOD_RISK], default=None,
+               description="Bushfire risk score 0-10 (lower = lower risk)"),
+    ColumnSpec("natural_hazard_risk",   [SOURCE_FLOOD_RISK], default=None,
+               description="Composite natural hazard risk 0-10 (flood + bushfire equally weighted)"),
+
+    # ── Walkability (OpenStreetMap) ────────────────────────────────────────────
+    ColumnSpec("walkability_score",     [SOURCE_WALKABILITY], default=None,
+               description="Walk Score-style walkability index 0-100 (OSM amenity density)"),
+    ColumnSpec("bike_score",            [SOURCE_WALKABILITY], default=None,
+               description="Cycling infrastructure score 0-10 (cycleway density from OSM)"),
+    ColumnSpec("is_walkable",           [SOURCE_WALKABILITY], default=None,
+               description="True if walkability_score >= 70"),
+    ColumnSpec("is_bikeable",           [SOURCE_WALKABILITY], default=None,
+               description="True if bike_score >= 6"),
 ]
 
 # ─── Lookup helpers ──────────────────────────────────────────────────────────

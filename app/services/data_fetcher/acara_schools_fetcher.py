@@ -13,12 +13,10 @@ logger = logging.getLogger(__name__)
 # Published under Creative Commons Attribution 4.0
 # Updated annually after NAPLAN cycle
 _DOWNLOAD_URLS = [
-    # Primary: ACARA direct download (year may vary — try recent years)
-    "https://www.acara.edu.au/docs/default-source/research-and-statistics/my-school-dataset.xlsx",
-    # Fallback: data.gov.au CKAN resource
-    "https://data.gov.au/data/dataset/australian-curriculum-assessment-and-reporting-authority-school-profiles/resource/school-profile",
-    # Fallback 2: ACARA school locations CSV (more stable URL)
-    "https://acara.edu.au/docs/default-source/research-and-statistics/school-profile.xlsx",
+    # Primary: ACARA Data Access Program — School Profile 2025 (ICSEA, enrolments)
+    "https://dataandreporting.blob.core.windows.net/anrdataportal/Data-Access-Program/School%20Profile%202025.xlsx",
+    # Fallback: historical 2008-2025 file (larger, ~28 MB)
+    "https://dataandreporting.blob.core.windows.net/anrdataportal/Data-Access-Program/School%20Profile%202008-2025.xlsx",
 ]
 
 _STATE_ABBREV = {
@@ -63,28 +61,6 @@ class ACARASchoolsFetcher(BaseFetcher):
                     return df
             except Exception as e:
                 logger.warning(f"ACARA download failed ({url}): {e}")
-
-        # Final fallback: data.gov.au CKAN API
-        return self._fetch_from_ckan()
-
-    def _fetch_from_ckan(self) -> pd.DataFrame:
-        """Try data.gov.au CKAN API for ACARA school data."""
-        try:
-            url = "https://data.gov.au/api/3/action/datastore_search"
-            # Search for ACARA school profile dataset
-            params = {
-                "resource_id": "a92a6cf2-1adb-4a3f-8b42-ee9a0e2babb3",  # ACARA school profiles
-                "limit": 10000,
-            }
-            resp = requests.get(url, params=params, timeout=30)
-            resp.raise_for_status()
-            records = resp.json().get("result", {}).get("records", [])
-            if records:
-                df = pd.DataFrame(records)
-                logger.info(f"ACARA: downloaded {len(df)} schools from data.gov.au CKAN")
-                return df
-        except Exception as e:
-            logger.error(f"ACARA CKAN fallback failed: {e}")
 
         logger.error("ACARA: all download attempts failed")
         return pd.DataFrame()
