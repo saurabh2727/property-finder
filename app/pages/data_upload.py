@@ -452,34 +452,55 @@ def show_api_connection_form():
     ]
 
     # ── Render category panels with status + checkboxes ──────────────────────
-    st.markdown("### Data Source Categories")
-    st.caption("Green = data available and fresh  ·  Yellow = stale  ·  Red = empty  ·  Grey = not fetched yet")
+    st.markdown("### Select Data Sources")
+    st.caption("🟢 Fresh  ·  🟡 Stale  ·  🔴 Empty  ·  ⬜ Not fetched  — status updates after each fetch")
 
     selections = {}  # key → bool
+    KEY_TO_NAME = {key: name for cat in ALL_CATEGORIES for (key, name, *_) in cat["sources"]}
+
+    # Only expand categories that have at least one source with data or that are "core"
+    CORE_CATEGORIES = {"🏠 Demographics & Socioeconomic", "📈 Property Market", "🏫 Education"}
+    OSM_SOURCES = {"amenities", "transport", "healthcare", "walkability"}
+    ALWAYS_EMPTY = {"building_approvals"}  # stub fetchers — expected to return 0 rows
 
     for cat in ALL_CATEGORIES:
-        with st.expander(cat["label"], expanded=True):
+        # Auto-expand if it's a core category or has fresh data
+        has_fresh = any(
+            cached_keys.get(key, {}).get("fresh") and int(str(cached_keys.get(key, {}).get("row_count", 0) or 0)) > 0
+            for (key, *_) in cat["sources"]
+        )
+        expand = cat["label"] in CORE_CATEGORIES or has_fresh
+
+        with st.expander(cat["label"], expanded=expand):
             for (key, name, desc, default, needs_manual) in cat["sources"]:
                 icon, badge_text, _ = _status_badge(key)
-                col_check, col_info = st.columns([1, 3])
+                col_check, col_status = st.columns([2, 3])
                 with col_check:
-                    osm_sources = {"amenities", "transport", "healthcare", "walkability"}
-                    disabled = (key in osm_sources and not suburb_list)
+                    disabled = (key in OSM_SOURCES and not suburb_list)
                     selections[key] = st.checkbox(
                         name,
-                        value=default and not needs_manual,
+                        value=default and not needs_manual and key not in ALWAYS_EMPTY,
                         key=f"src_{key}",
                         disabled=disabled,
-                        help=f"{desc}\n\n{'⚠️ Upload a suburb dataset first to enable OSM queries.' if disabled else ''}",
+                        help=(
+                            f"{desc}"
+                            + ("\n\n⚠️ Upload a suburb dataset first to enable this source." if disabled else "")
+                            + ("\n\n⚙️ This source is a stub — always returns 0 rows by design." if key in ALWAYS_EMPTY else "")
+                        ),
                     )
-                with col_info:
+                with col_status:
+                    extra = ""
+                    if key in ALWAYS_EMPTY:
+                        extra = "  <small style='color:#888'>⚙️ stub — no API available</small>"
+                    elif key in OSM_SOURCES and not suburb_list:
+                        extra = "  <small style='color:#e07b00'>⚠️ needs base dataset</small>"
+                    elif needs_manual:
+                        extra = "  <small style='color:#e07b00'>⚠️ manual download required</small>"
                     st.markdown(
-                        f"<small style='color:grey'>{desc}</small><br>"
-                        f"<small>{icon} {badge_text}</small>",
+                        f"<small style='color:#555'>{desc}</small><br>"
+                        f"<small>{icon} {badge_text}{extra}</small>",
                         unsafe_allow_html=True,
                     )
-                    if needs_manual:
-                        st.caption("⚠️ Requires manual DataPack download — see instructions below.")
 
     # ── Domain API key ────────────────────────────────────────────────────────
     use_domain = selections.get("domain_listings") or selections.get("domain_rental_avm")
@@ -560,9 +581,10 @@ def show_api_connection_form():
         }
 
         results = {}
-        progress = st.progress(0)
+        errors = {}
+        progress = st.progress(0, text="Starting…")
         total = len(selected_keys)
-        status_rows = {k: st.empty() for k in selected_keys}
+        live_status = st.empty()
 
         def run_fetcher(key):
             set_fetch_status(key, "fetching")
@@ -574,41 +596,63 @@ def show_api_connection_form():
                 set_fetch_status(key, "failed")
                 return key, pd.DataFrame(), str(e)
 
-        # OSM fetchers must run sequentially (rate limits); others can be parallel
+        # OSM fetchers run sequentially (rate limits); all others run in parallel
         osm_keys = {"amenities", "transport", "healthcare", "walkability"} & selected_keys
         parallel_keys = selected_keys - osm_keys
-
         completed = 0
+
         with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
             futures = {executor.submit(run_fetcher, k): k for k in parallel_keys}
             for future in concurrent.futures.as_completed(futures):
                 key, df, error = future.result()
                 completed += 1
-                progress.progress(completed / total)
+                progress.progress(completed / total, text=f"Fetched {completed}/{total}…")
                 if error:
-                    status_rows[key].error(f"❌ **{key}** — {error}")
+                    errors[key] = error
                 else:
-                    n = len(df)
-                    status_rows[key].success(f"✅ **{key}** — {n:,} rows fetched") if n else status_rows[key].warning(f"⚠️ **{key}** — 0 rows (source may be unavailable)")
                     results[key] = df
 
-        # Run OSM fetchers sequentially
         for key in osm_keys:
-            status_rows[key].info(f"🔄 **{key}** — querying OpenStreetMap…")
+            live_status.info(f"🗺️ Querying OpenStreetMap for **{KEY_TO_NAME.get(key, key)}**…")
             key2, df, error = run_fetcher(key)
             completed += 1
-            progress.progress(completed / total)
+            progress.progress(completed / total, text=f"Fetched {completed}/{total}…")
             if error:
-                status_rows[key].error(f"❌ **{key}** — {error}")
+                errors[key] = error
             else:
-                n = len(df)
-                status_rows[key].success(f"✅ **{key}** — {n:,} rows") if n else status_rows[key].warning(f"⚠️ **{key}** — 0 rows")
                 results[key] = df
 
+        live_status.empty()
+        progress.empty()
         st.session_state.raw_fetched_datasets.update(results)
-        if results:
+        if results or errors:
             st.session_state._api_fetch_results = results
-            st.success(f"Fetched {len(results)}/{total} source(s). Review results above, then merge below.")
+            st.session_state._api_fetch_errors = errors
+
+        # ── Grouped results summary ───────────────────────────────────────────
+        st.markdown("#### Fetch Results")
+        for cat in ALL_CATEGORIES:
+            cat_keys = [key for (key, *_) in cat["sources"] if key in selected_keys]
+            if not cat_keys:
+                continue
+            st.markdown(f"**{cat['label']}**")
+            for key in cat_keys:
+                friendly = KEY_TO_NAME.get(key, key)
+                if key in errors:
+                    st.error(f"❌ **{friendly}** — {errors[key]}")
+                elif key in results:
+                    n = len(results[key])
+                    if n > 0:
+                        st.success(f"✅ **{friendly}** — {n:,} rows")
+                    elif key in ALWAYS_EMPTY:
+                        st.info(f"⚙️ **{friendly}** — stub source (no API available, will be skipped in merge)")
+                    else:
+                        st.warning(f"⚠️ **{friendly}** — 0 rows (source unavailable or no suburb list)")
+            st.markdown("")  # spacing between categories
+
+        succeeded = sum(1 for k, df in results.items() if len(df) > 0 and k not in ALWAYS_EMPTY)
+        failed = len(errors) + sum(1 for k, df in results.items() if len(df) == 0 and k not in ALWAYS_EMPTY)
+        st.markdown(f"**Summary:** {succeeded} sources with data · {failed} empty/failed · {len(ALWAYS_EMPTY & selected_keys)} stubs skipped")
 
     # ── Merge section ─────────────────────────────────────────────────────────
     fetch_results = st.session_state.get('_api_fetch_results')
@@ -622,16 +666,22 @@ def show_api_connection_form():
         else:
             st.info("No base dataset loaded. The merger will attempt to build one from ABS ERP data.")
 
-        # Show what will be merged
-        merge_preview = []
-        for key, df in fetch_results.items():
-            merge_preview.append({
-                "Source": key,
-                "Rows": len(df),
-                "Columns": len(df.columns),
-                "Status": "✅ Ready" if len(df) > 0 else "⚠️ Empty",
-            })
-        st.dataframe(pd.DataFrame(merge_preview), use_container_width=True, hide_index=True)
+        # Show merge preview grouped by category with friendly names
+        merge_rows = []
+        for cat in ALL_CATEGORIES:
+            for (key, name, desc, *_) in cat["sources"]:
+                if key not in fetch_results:
+                    continue
+                df = fetch_results[key]
+                n = len(df)
+                merge_rows.append({
+                    "Category": cat["label"],
+                    "Source": name,
+                    "Rows": f"{n:,}" if n else "—",
+                    "Will merge": "✅ Yes" if n > 0 else ("⚙️ Stub" if key in ALWAYS_EMPTY else "⚠️ Skip"),
+                })
+        if merge_rows:
+            st.dataframe(pd.DataFrame(merge_rows), use_container_width=True, hide_index=True)
 
         from services.data_fetcher.sa2_concordance import SA2Concordance
         from services.data_fetcher.data_merger import DataMerger
