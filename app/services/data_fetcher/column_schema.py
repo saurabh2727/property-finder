@@ -155,11 +155,25 @@ SCHEMA: List[ColumnSpec] = [
 
     # ── ACARA Schools ─────────────────────────────────────────────────────
     ColumnSpec("school_quality_score",  [SOURCE_ACARA], default=None,
-               description="Normalised school quality score (0-10) derived from ICSEA median"),
+               description="Composite school quality 0–10 (ICSEA + NAPLAN equally weighted; uses whichever available)"),
     ColumnSpec("school_icsea_median",   [SOURCE_ACARA], default=None,
-               description="Median ICSEA score across all schools in suburb (~800-1200)"),
+               description="Median ICSEA score across all schools in suburb (500–1300, national mean ~1000)"),
+    ColumnSpec("naplan_mean_score",     [SOURCE_ACARA], default=None,
+               description="Mean NAPLAN score (Reading + Numeracy, all year levels) across suburb schools"),
     ColumnSpec("school_count",          [SOURCE_ACARA], default=None,
-               description="Number of schools in suburb"),
+               description="Total number of schools in suburb"),
+    ColumnSpec("primary_count",         [SOURCE_ACARA], default=None,
+               description="Number of primary schools in suburb"),
+    ColumnSpec("secondary_count",       [SOURCE_ACARA], default=None,
+               description="Number of secondary/combined schools in suburb"),
+    ColumnSpec("pct_independent",       [SOURCE_ACARA], default=None,
+               description="Percentage of schools that are Independent/Private (0–100)"),
+    ColumnSpec("pct_catholic",          [SOURCE_ACARA], default=None,
+               description="Percentage of schools that are Catholic (0–100)"),
+    ColumnSpec("pct_government",        [SOURCE_ACARA], default=None,
+               description="Percentage of schools that are Government/Public (0–100)"),
+    ColumnSpec("has_secondary",         [SOURCE_ACARA], default=None,
+               description="True if suburb has at least one secondary or combined school"),
 
     # ── Domain API ────────────────────────────────────────────────────────
     ColumnSpec("domain_median_list_price",      [SOURCE_DOMAIN_LISTINGS], default=None,

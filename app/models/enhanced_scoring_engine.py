@@ -247,7 +247,11 @@ class EnhancedScoringEngine:
             'Listing_Supply_Index',             # Derived supply pressure rank
         ]
         abs_all_features = [
-            'school_quality_score',             # ACARA ICSEA — amenity score
+            'school_quality_score',             # ACARA composite (ICSEA + NAPLAN)
+            'naplan_mean_score',                # ACARA NAPLAN academic outcomes
+            'pct_independent',                  # Private school presence — affluence signal
+            'has_secondary',                    # Families filter on this
+            'school_count',                     # School accessibility
             'seifa_ieo_decile',                 # Education/occupation index
             'seifa_ier_decile',                 # Economic resources index
             'Price_to_Income_Ratio',            # Derived affordability
