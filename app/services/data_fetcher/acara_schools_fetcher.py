@@ -51,14 +51,28 @@ class ACARASchoolsFetcher(BaseFetcher):
             try:
                 logger.info(f"Trying ACARA download from: {url}")
                 resp = requests.get(url, timeout=60, allow_redirects=True)
-                if resp.status_code == 200 and len(resp.content) > 10000:
-                    # Try Excel first, then CSV
-                    try:
-                        df = pd.read_excel(io.BytesIO(resp.content), dtype=str)
-                    except Exception:
-                        df = pd.read_csv(io.BytesIO(resp.content), dtype=str, encoding="latin-1")
-                    logger.info(f"ACARA: downloaded {len(df)} schools from {url}")
+                logger.info(f"ACARA: HTTP {resp.status_code}, size={len(resp.content)}, "
+                            f"type={resp.headers.get('content-type', '?')[:60]}")
+                if resp.status_code != 200:
+                    continue
+                if len(resp.content) < 10000:
+                    logger.warning(f"ACARA: response too small — likely an error/redirect page")
+                    continue
+                if "html" in resp.headers.get("content-type", "").lower():
+                    logger.warning(f"ACARA: got HTML instead of Excel — URL may have moved")
+                    continue
+                try:
+                    df = pd.read_excel(io.BytesIO(resp.content), dtype=str)
+                    logger.info(f"ACARA: downloaded {len(df)} schools, columns: {list(df.columns[:10])}")
                     return df
+                except Exception as excel_err:
+                    logger.warning(f"ACARA: Excel parse failed: {excel_err}, trying CSV")
+                    try:
+                        df = pd.read_csv(io.BytesIO(resp.content), dtype=str, encoding="latin-1")
+                        logger.info(f"ACARA: CSV loaded {len(df)} rows")
+                        return df
+                    except Exception as csv_err:
+                        logger.warning(f"ACARA: CSV also failed: {csv_err}")
             except Exception as e:
                 logger.warning(f"ACARA download failed ({url}): {e}")
 

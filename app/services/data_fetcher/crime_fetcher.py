@@ -94,7 +94,19 @@ class CrimeFetcher(BaseFetcher):
                         if any(str(v).lower() in ("lga", "local government area", "area") for v in row.values):
                             header_row = i
                             break
-                    df.columns = df.iloc[header_row]
+                    raw_cols = df.iloc[header_row].tolist()
+                    # Deduplicate column names — BOCSAR sheets often repeat offence headers
+                    seen: dict = {}
+                    unique_cols = []
+                    for c in raw_cols:
+                        s = str(c).strip()
+                        if s in seen:
+                            seen[s] += 1
+                            unique_cols.append(f"{s}_{seen[s]}")
+                        else:
+                            seen[s] = 0
+                            unique_cols.append(s)
+                    df.columns = unique_cols
                     df = df.iloc[header_row + 1:].reset_index(drop=True)
                     df["state"] = "NSW"
                     logger.info(f"CrimeFetcher: NSW BOCSAR loaded {len(df)} rows from '{sheet}'")

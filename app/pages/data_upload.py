@@ -645,9 +645,13 @@ def show_api_connection_form():
                     if n > 0:
                         st.success(f"✅ **{friendly}** — {n:,} rows")
                     elif key in ALWAYS_EMPTY:
-                        st.info(f"⚙️ **{friendly}** — stub source (no API available, will be skipped in merge)")
+                        st.info(f"⚙️ **{friendly}** — stub (no public API available, skipped in merge)")
+                    elif key in OSM_SOURCES and not suburb_list:
+                        st.warning(f"⚠️ **{friendly}** — skipped: no base suburb dataset loaded. Upload a CSV first, then re-fetch.")
+                    elif key in OSM_SOURCES:
+                        st.warning(f"⚠️ **{friendly}** — 0 rows: OpenStreetMap queries returned no results")
                     else:
-                        st.warning(f"⚠️ **{friendly}** — 0 rows (source unavailable or no suburb list)")
+                        st.warning(f"⚠️ **{friendly}** — 0 rows: source unavailable or URL has changed")
             st.markdown("")  # spacing between categories
 
         succeeded = sum(1 for k, df in results.items() if len(df) > 0 and k not in ALWAYS_EMPTY)
