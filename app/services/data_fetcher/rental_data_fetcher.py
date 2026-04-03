@@ -9,17 +9,25 @@ from utils.data_cache import DataCache
 
 logger = logging.getLogger(__name__)
 
-# NSW Fair Trading — Rental Bond Data (quarterly XLSX)
-# https://www.nsw.gov.au/housing-and-construction/rental-forms-surveys-and-data/rental-bond-data
-_NSW_RENTAL_URL = (
-    "https://www.fairtrading.nsw.gov.au/about-fair-trading/data-and-research"
-    "/rental-bond-data/rental-bond-board-data-tables"
+# NSW Fair Trading — Rental Bond Lodgements (monthly XLSX, postcode-level)
+# URL confirmed working April 2026. Contains: postcode, dwelling type, weekly rent, bedrooms.
+_NSW_RENTAL_BASE = "https://www.nsw.gov.au/sites/default/files/noindex"
+_NSW_RENTAL_URLS = [
+    f"{_NSW_RENTAL_BASE}/2026-03/rentalbond_lodgements_february_2026.xlsx",
+    f"{_NSW_RENTAL_BASE}/2026-02/rentalbond_lodgements_january_2026.xlsx",
+    f"{_NSW_RENTAL_BASE}/2025-12/rentalbond_lodgements_november_2025.xlsx",
+]
+
+# NSW postcode → suburb mapping (ABS postcode correspondence file)
+_NSW_POSTCODE_URL = (
+    "https://www.abs.gov.au/statistics/standards/australian-statistical-geography-standard-asgs-edition-3"
+    "/jul2021-jun2026/access-and-downloads/correspondences/CG_POA_2021_SAL_2021.csv"
 )
 
-# Victoria DFFH — Moving Annual Rents by Suburb (quarterly CSV)
-# https://discover.data.vic.gov.au/dataset/rental-report-quarterly-moving-annual-rents-by-suburb
+# Victoria — Moving Annual Rents by LGA (quarterly, DFFH)
+# Resource ID confirmed working April 2026
 _VIC_RENTAL_CKAN = "https://discover.data.vic.gov.au/api/3/action/datastore_search"
-_VIC_RENTAL_RESOURCE = "e9e6fa72-3279-49a9-827d-34e7e3e21b91"  # verify on portal
+_VIC_RENTAL_RESOURCE = "ca75f2c7-0c61-4189-bdf2-3e38fd8bd5b7"  # LGA-level, Sep 2025
 
 
 class RentalDataFetcher(BaseFetcher):
@@ -48,28 +56,18 @@ class RentalDataFetcher(BaseFetcher):
         return pd.concat(frames, ignore_index=True)
 
     def _fetch_nsw_rental(self) -> pd.DataFrame:
-        # NSW Fair Trading provides data as XLSX; the exact URL changes each quarter.
-        # We attempt a predictable URL pattern and fall back gracefully.
-        from datetime import datetime
-        year = datetime.now().year
-        quarter = (datetime.now().month - 1) // 3 + 1
-        # Try current and previous quarter
-        for q in [quarter, quarter - 1 if quarter > 1 else 4]:
-            y = year if q == quarter else (year if quarter > 1 else year - 1)
-            url = (
-                f"https://www.fairtrading.nsw.gov.au/content/dam/public-service-corporate"
-                f"/fair-trading/documents/data/rental-bond-board/rbb-data-{y}-q{q}.xlsx"
-            )
+        for url in _NSW_RENTAL_URLS:
             try:
-                resp = requests.get(url, timeout=30)
-                if resp.status_code == 200 and len(resp.content) > 1000:
+                logger.info(f"RentalDataFetcher: trying NSW {url}")
+                resp = requests.get(url, timeout=30, allow_redirects=True)
+                if resp.status_code == 200 and len(resp.content) > 5000:
                     df = pd.read_excel(io.BytesIO(resp.content), dtype=str)
                     df["state"] = "NSW"
-                    logger.info(f"NSW rental: downloaded {len(df)} rows for {y} Q{q}")
+                    logger.info(f"NSW rental: loaded {len(df)} rows from {url}")
                     return df
-            except Exception:
-                continue
-        logger.warning("NSW rental data: could not download")
+            except Exception as e:
+                logger.warning(f"NSW rental {url}: {e}")
+        logger.warning("RentalDataFetcher: all NSW URLs failed")
         return pd.DataFrame()
 
     def _fetch_vic_rental(self) -> pd.DataFrame:

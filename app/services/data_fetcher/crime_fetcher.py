@@ -21,18 +21,19 @@ from utils.data_cache import DataCache
 
 logger = logging.getLogger(__name__)
 
-# NSW BOCSAR LGA annual crime data (free public download)
-# https://www.bocsar.nsw.gov.au/Pages/bocsar_datasets/Datasets-.aspx
-_NSW_BOCSAR_URL = (
-    "https://www.bocsar.nsw.gov.au/Documents/RCS-Annual/lga_annual.xlsx"
-)
+# NSW BOCSAR — New South Wales state-wide LGA annual crime data
+# All LGAs in one file. URL confirmed working April 2026.
+_NSW_BOCSAR_URLS = [
+    "https://bocsar.nsw.gov.au/content/dam/dcj/bocsar/documents/publications/lga/NewSouthWales.xlsx",
+    "https://bocsar.nsw.gov.au/content/dam/dcj/bocsar/documents/publications/lga/GreaterSydney.xlsx",
+]
 
-# VIC Crime Statistics Agency - LGA data
+# VIC Crime Statistics Agency — LGA recorded offences (annual)
 # https://www.crimestatistics.vic.gov.au/crime-statistics/downloads
-_VIC_CRIME_URL = (
-    "https://files.crimestatistics.vic.gov.au/2024-06/"
-    "Data_Tables_LGA_Recorded_Offences_Year_Ending_March_2024.xlsx"
-)
+_VIC_CRIME_URLS = [
+    "https://files.crimestatistics.vic.gov.au/2024-06/Data_Tables_LGA_Recorded_Offences_Year_Ending_March_2024.xlsx",
+    "https://files.crimestatistics.vic.gov.au/2024-03/Data_Tables_LGA_Recorded_Offences_Year_Ending_December_2023.xlsx",
+]
 
 # ABS Population estimates for normalisation (ERP LGA-level)
 _ABS_LGA_POP_URL = (
@@ -75,35 +76,50 @@ class CrimeFetcher(BaseFetcher):
         return pd.concat(frames, ignore_index=True)
 
     def _fetch_nsw(self) -> pd.DataFrame:
-        try:
-            logger.info("CrimeFetcher: downloading NSW BOCSAR data")
-            resp = requests.get(_NSW_BOCSAR_URL, timeout=60, allow_redirects=True)
-            if resp.status_code == 200 and len(resp.content) > 10000:
-                # BOCSAR Excel has multiple sheets; first sheet is usually the summary
-                xl = pd.ExcelFile(io.BytesIO(resp.content))
-                # Find sheet with LGA data
-                sheet = xl.sheet_names[0]
-                df = xl.parse(sheet, dtype=str)
-                df["state"] = "NSW"
-                logger.info(f"CrimeFetcher: NSW BOCSAR loaded {len(df)} rows from sheet '{sheet}'")
-                return df
-        except Exception as e:
-            logger.warning(f"CrimeFetcher: NSW BOCSAR failed: {e}")
+        for url in _NSW_BOCSAR_URLS:
+            try:
+                logger.info(f"CrimeFetcher: downloading NSW BOCSAR from {url}")
+                resp = requests.get(url, timeout=60, allow_redirects=True)
+                if resp.status_code == 200 and len(resp.content) > 10000:
+                    xl = pd.ExcelFile(io.BytesIO(resp.content))
+                    # BOCSAR files: find the sheet with "LGA" or "Offence" data
+                    sheet = next(
+                        (s for s in xl.sheet_names if any(x in s.lower() for x in ["lga", "offence", "total"])),
+                        xl.sheet_names[0]
+                    )
+                    df = xl.parse(sheet, dtype=str, header=None)
+                    # Find the actual header row (first row where first cell looks like "LGA")
+                    header_row = 0
+                    for i, row in df.iterrows():
+                        if any(str(v).lower() in ("lga", "local government area", "area") for v in row.values):
+                            header_row = i
+                            break
+                    df.columns = df.iloc[header_row]
+                    df = df.iloc[header_row + 1:].reset_index(drop=True)
+                    df["state"] = "NSW"
+                    logger.info(f"CrimeFetcher: NSW BOCSAR loaded {len(df)} rows from '{sheet}'")
+                    return df
+            except Exception as e:
+                logger.warning(f"CrimeFetcher: NSW {url} failed: {e}")
         return pd.DataFrame()
 
     def _fetch_vic(self) -> pd.DataFrame:
-        try:
-            logger.info("CrimeFetcher: downloading VIC Crime Stats data")
-            resp = requests.get(_VIC_CRIME_URL, timeout=60, allow_redirects=True)
-            if resp.status_code == 200 and len(resp.content) > 10000:
-                xl = pd.ExcelFile(io.BytesIO(resp.content))
-                sheet = xl.sheet_names[0]
-                df = xl.parse(sheet, dtype=str)
-                df["state"] = "VIC"
-                logger.info(f"CrimeFetcher: VIC loaded {len(df)} rows")
-                return df
-        except Exception as e:
-            logger.warning(f"CrimeFetcher: VIC Crime Stats failed: {e}")
+        for url in _VIC_CRIME_URLS:
+            try:
+                logger.info(f"CrimeFetcher: downloading VIC Crime Stats from {url}")
+                resp = requests.get(url, timeout=60, allow_redirects=True)
+                if resp.status_code == 200 and len(resp.content) > 10000:
+                    xl = pd.ExcelFile(io.BytesIO(resp.content))
+                    sheet = next(
+                        (s for s in xl.sheet_names if any(x in s.lower() for x in ["lga", "offence", "table"])),
+                        xl.sheet_names[0]
+                    )
+                    df = xl.parse(sheet, dtype=str)
+                    df["state"] = "VIC"
+                    logger.info(f"CrimeFetcher: VIC loaded {len(df)} rows from '{sheet}'")
+                    return df
+            except Exception as e:
+                logger.warning(f"CrimeFetcher: VIC {url} failed: {e}")
         return pd.DataFrame()
 
     def _normalise(self, df: pd.DataFrame) -> pd.DataFrame:

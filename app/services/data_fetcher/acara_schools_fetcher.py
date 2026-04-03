@@ -73,11 +73,13 @@ class ACARASchoolsFetcher(BaseFetcher):
         col_map = {}
         for col in df.columns:
             lc = col.lower().strip()
-            if any(x in lc for x in ["suburb", "town", "locality"]):
+            if any(x in lc for x in ["suburb", "town", "locality", "location"]):
                 col_map.setdefault("suburb", col)
-            elif any(x in lc for x in ["state", "territory"]) and "postcode" not in lc:
+            elif any(x in lc for x in ["state", "territory"]) and "postcode" not in lc and "name" not in lc:
                 col_map.setdefault("state", col)
-            elif "icsea" in lc:
+            elif "icsea" in lc and "value" not in lc:
+                col_map.setdefault("icsea", col)
+            elif "icsea" in lc:  # catches "ICSEA Value" column in 2025 format
                 col_map.setdefault("icsea", col)
             elif "school_type" in lc or "school type" in lc:
                 col_map.setdefault("school_type", col)
@@ -86,8 +88,33 @@ class ACARASchoolsFetcher(BaseFetcher):
             elif "postcode" in lc or "post_code" in lc:
                 col_map.setdefault("postcode", col)
 
+        logger.info(f"ACARA: column mapping found: {col_map}")
+
         if "suburb" not in col_map or "icsea" not in col_map:
-            logger.warning(f"ACARA: could not identify suburb/ICSEA columns. Available: {list(df.columns)[:20]}")
+            # Last resort: try to find ICSEA by looking for numeric columns in 500-1300 range
+            for col in df.columns:
+                try:
+                    vals = pd.to_numeric(df[col], errors="coerce").dropna()
+                    if len(vals) > 100 and vals.between(500, 1300).mean() > 0.5:
+                        col_map.setdefault("icsea", col)
+                        logger.info(f"ACARA: detected ICSEA column by value range: '{col}'")
+                        break
+                except Exception:
+                    pass
+            # Try any text column with "suburb" style values for suburb
+            if "suburb" not in col_map:
+                for col in df.columns:
+                    try:
+                        sample = df[col].dropna().astype(str).head(20)
+                        if sample.str.istitle().mean() > 0.5 and sample.str.len().mean() < 30:
+                            col_map.setdefault("suburb", col)
+                            logger.info(f"ACARA: detected suburb column by text pattern: '{col}'")
+                            break
+                    except Exception:
+                        pass
+
+        if "suburb" not in col_map or "icsea" not in col_map:
+            logger.warning(f"ACARA: could not identify suburb/ICSEA columns. Available: {list(df.columns)[:30]}")
             return pd.DataFrame()
 
         df = df.copy()
