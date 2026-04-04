@@ -31,6 +31,11 @@ class EnhancedScoringEngine:
         }
         self.is_trained = False
         self.feature_importance_log = {}
+        self.imputation_medians = {
+            'growth': {},
+            'yield': {},
+            'risk': {},
+        }
 
     def prepare_features(self, df, customer_profile):
         """Step 4: Feature Assembly - Clean/standardise and create composite features"""
@@ -221,62 +226,90 @@ class EnhancedScoringEngine:
             'Less than $650 gross weekly income'
         ]
 
-        # ABS / Domain enrichment columns — added to feature sets when available
+        # ABS / Domain enrichment columns
         abs_growth_features = [
-            'pop_growth_rate_5yr',       # ABS ERP — population growth proxy for demand
-            'total_approvals_12m',       # ABS Building Approvals — new supply pipeline
-            'seifa_irsad_decile',        # SEIFA — socioeconomic advantage (higher = more desirable)
-            'erp_population',            # ABS ERP — raw population
-            'Population_Growth_Rate',    # Derived from ERP
+            'pop_growth_rate_5yr',              # ABS ERP — population growth proxy
+            'total_approvals_12m',              # Building supply pipeline
+            'seifa_irsad_decile',               # Socioeconomic advantage
+            'erp_population',                   # Raw population
+            'Population_Growth_Rate',           # Derived from ERP
+            'transit_score',                    # Transport access → higher demand
+            'train_station_count',              # Heavy rail presence
+            'labour_force_participation_rate',  # Employment health
+            'employment_score',                 # Low unemployment → strong demand
+            'walkability_score',                # Walkable areas appreciate faster
+            'amenity_score',                    # Lifestyle amenities drive demand
+            'cafe_count',                       # Urban lifestyle signal
+            'supermarket_count',                # Day-to-day accessibility
+            'qld_median_sale_price',            # QLD market price signal
         ]
         abs_yield_features = [
-            'median_rent_weekly_actual',        # State government rental bond data
-            'median_rent_weekly_census',        # ABS Census G02
-            'domain_median_rental_estimate',    # Domain Rental AVM
-            'Actual_Gross_Yield',               # Derived: actual rent / median price
-            'Domain_Gross_Yield',               # Derived: Domain AVM / median price
-            'owner_occupied_pct',               # Census tenure — higher = stable demand
+            'median_rent_weekly_actual',        # State rental bond data
+            'median_rent_weekly_census',        # ABS Census rent
+            'domain_median_rental_estimate',    # Domain AVM
+            'Actual_Gross_Yield',               # Derived: actual rent / price
+            'Domain_Gross_Yield',               # Derived: Domain AVM / price
+            'owner_occupied_pct',               # High owner-occ = stable demand
             'median_household_income_weekly',   # Census income
+            'unemployment_rate',                # Low unemployment → reliable tenants
+            'rented_pct',                       # High rental % = strong rental market
         ]
         abs_risk_features = [
             'avg_monthly_approvals',            # High approvals = oversupply risk
-            'seifa_irsd_decile',                # Disadvantage index — higher = lower risk
-            'median_mortgage_monthly',          # Census mortgage stress proxy
-            'rented_pct',                       # High rental % = more volatile market
-            'domain_listing_count',             # High active listings = supply pressure
-            'Listing_Supply_Index',             # Derived supply pressure rank
+            'seifa_irsd_decile',                # Disadvantage → higher risk
+            'median_mortgage_monthly',          # Mortgage stress proxy
+            'domain_listing_count',             # High listings = supply pressure
+            'Listing_Supply_Index',             # Supply pressure rank
+            'crime_risk_score',                 # Higher crime = higher risk
+            'crime_incidents_per_1000',         # Raw crime rate
+            'flood_risk_score',                 # Natural hazard risk
+            'bushfire_risk_score',              # Bushfire risk
+            'natural_hazard_risk',              # Composite hazard
+            'unemployment_rate',                # High unemployment = volatile market
         ]
+        # Features that inform all three models — quality of life / suburb desirability
         abs_all_features = [
             'school_quality_score',             # ACARA composite (ICSEA + NAPLAN)
-            'naplan_mean_score',                # ACARA NAPLAN academic outcomes
-            'pct_independent',                  # Private school presence — affluence signal
-            'has_secondary',                    # Families filter on this
-            'school_count',                     # School accessibility
+            'naplan_mean_score',                # NAPLAN academic outcomes
+            'school_icsea_median',              # Socio-educational advantage
+            'pct_independent',                  # Private school presence
+            'has_secondary',                    # Secondary school access
+            'school_count',                     # School count
+            'healthcare_score',                 # Hospital/GP/pharmacy access
+            'hospital_count',                   # Direct hospital count
             'seifa_ieo_decile',                 # Education/occupation index
             'seifa_ier_decile',                 # Economic resources index
-            'Price_to_Income_Ratio',            # Derived affordability
+            'Price_to_Income_Ratio',            # Affordability
             'Socioeconomic_Score',              # Derived from SEIFA
             'Owner_Occupier_Ratio',             # Derived tenure
+            'bike_score',                       # Cycling infrastructure
+            'park_count',                       # Green space
         ]
 
-        growth_features = growth_features + abs_growth_features
-        yield_features = yield_features + abs_yield_features
-        risk_features = risk_features + abs_risk_features
-        # Common amenity/quality features go to all three models
-        growth_features += abs_all_features
-        yield_features += abs_all_features
-        risk_features += abs_all_features
+        growth_features = growth_features + abs_growth_features + abs_all_features
+        yield_features  = yield_features  + abs_yield_features  + abs_all_features
+        risk_features   = risk_features   + abs_risk_features   + abs_all_features
 
-        # Filter to only include available columns
-        self.feature_columns['growth'] = [col for col in growth_features if col in all_numeric_cols]
-        self.feature_columns['yield'] = [col for col in yield_features if col in all_numeric_cols]
-        self.feature_columns['risk'] = [col for col in risk_features if col in all_numeric_cols]
+        # Deduplicate while preserving order
+        def _dedup(lst):
+            seen = set()
+            return [x for x in lst if not (x in seen or seen.add(x))]
+        growth_features = _dedup(growth_features)
+        yield_features  = _dedup(yield_features)
+        risk_features   = _dedup(risk_features)
 
-        # Add any remaining numeric columns to appropriate models
-        remaining_cols = set(all_numeric_cols) - set(self.feature_columns['growth'] + self.feature_columns['yield'] + self.feature_columns['risk'])
-        remaining_cols = [col for col in remaining_cols if not any(x in col for x in ['_Normalized', '_Score', 'Suburb', 'State'])]
+        # Filter to columns that exist AND are numeric in the current DataFrame
+        self.feature_columns['growth'] = [c for c in growth_features if c in all_numeric_cols]
+        self.feature_columns['yield']  = [c for c in yield_features  if c in all_numeric_cols]
+        self.feature_columns['risk']   = [c for c in risk_features   if c in all_numeric_cols]
 
-        # Distribute remaining columns
+        # Any remaining numeric columns not yet assigned go to the most relevant model
+        assigned = set(self.feature_columns['growth'] + self.feature_columns['yield'] + self.feature_columns['risk'])
+        remaining_cols = [
+            c for c in all_numeric_cols
+            if c not in assigned
+            and not any(x in c for x in ['_Normalized', 'Suburb', 'State', 'sa2_code', 'erp_year'])
+        ]
         for i, col in enumerate(remaining_cols):
             if i % 3 == 0:
                 self.feature_columns['growth'].append(col)
@@ -292,7 +325,9 @@ class EnhancedScoringEngine:
             return False
 
         try:
-            X = df[self.feature_columns['growth']].fillna(0)
+            X = df[self.feature_columns['growth']].copy()
+            self.imputation_medians['growth'] = X.median().to_dict()
+            X = X.fillna(self.imputation_medians['growth']).fillna(0)
 
             # Create growth target
             y_growth = self._create_growth_target(df)
@@ -321,7 +356,9 @@ class EnhancedScoringEngine:
             return False
 
         try:
-            X = df[self.feature_columns['yield']].fillna(0)
+            X = df[self.feature_columns['yield']].copy()
+            self.imputation_medians['yield'] = X.median().to_dict()
+            X = X.fillna(self.imputation_medians['yield']).fillna(0)
 
             # Create yield target
             y_yield = self._create_yield_target(df)
@@ -350,7 +387,9 @@ class EnhancedScoringEngine:
             return False
 
         try:
-            X = df[self.feature_columns['risk']].fillna(0)
+            X = df[self.feature_columns['risk']].copy()
+            self.imputation_medians['risk'] = X.median().to_dict()
+            X = X.fillna(self.imputation_medians['risk']).fillna(0)
 
             # Create risk target (lower is better)
             y_risk = self._create_risk_target(df)
@@ -498,21 +537,21 @@ class EnhancedScoringEngine:
 
     def _predict_growth_scores(self, df):
         """Predict growth scores"""
-        X = df[self.feature_columns['growth']].fillna(0)
+        X = df[self.feature_columns['growth']].fillna(self.imputation_medians['growth']).fillna(0)
         X_scaled = self.scalers['growth'].transform(X)
         scores = self.models['growth'].predict(X_scaled)
         return np.clip(scores, 0, 1)
 
     def _predict_yield_scores(self, df):
         """Predict yield scores"""
-        X = df[self.feature_columns['yield']].fillna(0)
+        X = df[self.feature_columns['yield']].fillna(self.imputation_medians['yield']).fillna(0)
         X_scaled = self.scalers['yield'].transform(X)
         scores = self.models['yield'].predict(X_scaled)
         return np.clip(scores, 0, 1)
 
     def _predict_risk_scores(self, df):
         """Predict risk scores"""
-        X = df[self.feature_columns['risk']].fillna(0)
+        X = df[self.feature_columns['risk']].fillna(self.imputation_medians['risk']).fillna(0)
         X_scaled = self.scalers['risk'].transform(X)
         scores = self.models['risk'].predict(X_scaled)
         return np.clip(scores, 0, 1)

@@ -122,26 +122,39 @@ class DataMerger:
             if "suburb" not in source_df.columns or "state" not in source_df.columns:
                 continue
 
-            # Normalise for join
             source_df = source_df.copy()
             source_df["_suburb_key"] = source_df["suburb"].str.strip().str.title()
-            source_df["_state_key"] = source_df["state"].str.strip().str.upper()
+            source_df["_state_key"]  = source_df["state"].str.strip().str.upper()
 
-            result["_suburb_key"] = result.get("Suburb", result.get("suburb", "")).str.strip().str.title()
-            result["_state_key"] = result.get("State", result.get("state", "")).str.strip().str.upper()
+            result["_suburb_key"] = result.get("Suburb", result.get("suburb", pd.Series("", index=result.index))).str.strip().str.title()
+            result["_state_key"]  = result.get("State",  result.get("state",  pd.Series("", index=result.index))).str.strip().str.upper()
 
             available_cols = [c for c in cols if c in source_df.columns]
             if not available_cols:
                 continue
 
-            result = result.merge(
+            # ── Pass 1: exact title-case match ───────────────────────────────
+            merged = result.merge(
                 source_df[["_suburb_key", "_state_key"] + available_cols],
                 on=["_suburb_key", "_state_key"],
                 how="left",
                 suffixes=("", f"_{source_key}"),
             )
-            logger.info(f"Merged {source_key}: added {len(available_cols)} columns, "
-                        f"coverage={result[available_cols[0]].notna().mean():.0%}")
+
+            exact_coverage = merged[available_cols[0]].notna().mean()
+            logger.info(f"Merged {source_key}: exact coverage={exact_coverage:.0%}")
+
+            # ── Pass 2: fuzzy fallback for unmatched rows ────────────────────
+            # Only run if exact coverage is below 80% and there are unmatched rows
+            if exact_coverage < 0.80:
+                merged = self._fuzzy_fill(
+                    merged, source_df, available_cols, source_key, check_col=available_cols[0]
+                )
+                fuzzy_coverage = merged[available_cols[0]].notna().mean()
+                logger.info(f"  → after fuzzy fill: coverage={fuzzy_coverage:.0%} "
+                            f"(+{fuzzy_coverage - exact_coverage:.0%})")
+
+            result = merged
 
         # Clean up temporary join keys
         result = result.drop(columns=["_suburb_key", "_state_key"], errors="ignore")
@@ -152,6 +165,61 @@ class DataMerger:
             result = self._merge_lga_keyed(result, fetched["crime"],
                                            columns_for_source(SOURCE_CRIME))
 
+        return result
+
+    def _fuzzy_fill(self,
+                    result: pd.DataFrame,
+                    source_df: pd.DataFrame,
+                    cols: list,
+                    source_key: str,
+                    check_col: str) -> pd.DataFrame:
+        """
+        For rows where exact suburb match failed (check_col is NaN), attempt
+        fuzzy name matching per state using difflib.
+
+        Builds a name→name lookup once per state, then fills missing rows.
+        Threshold 0.82 — tight enough to avoid false matches like
+        'Richmond' → 'Richmond Hill', loose enough to catch 'St Kilda' → 'Saint Kilda'.
+        """
+        import difflib
+
+        unmatched_mask = result[check_col].isna()
+        if not unmatched_mask.any():
+            return result
+
+        result = result.copy()
+
+        # Build per-state fuzzy lookup: source suburb names indexed by state
+        source_names_by_state: dict = {}
+        for state, grp in source_df.groupby("_state_key"):
+            source_names_by_state[state] = grp["_suburb_key"].dropna().unique().tolist()
+
+        # Build a flat lookup: (fuzzy_matched_name, state) → enrichment row
+        source_idx = source_df.set_index(["_suburb_key", "_state_key"])
+
+        fuzzy_matched = 0
+        for idx in result.index[unmatched_mask]:
+            base_suburb = result.at[idx, "_suburb_key"]
+            base_state  = result.at[idx, "_state_key"]
+            candidates  = source_names_by_state.get(base_state, [])
+            if not candidates or not base_suburb:
+                continue
+            matches = difflib.get_close_matches(base_suburb, candidates, n=1, cutoff=0.82)
+            if not matches:
+                continue
+            matched_name = matches[0]
+            try:
+                row = source_idx.loc[(matched_name, base_state)]
+                if isinstance(row, pd.DataFrame):
+                    row = row.iloc[0]
+                for col in cols:
+                    if col in row.index:
+                        result.at[idx, col] = row[col]
+                fuzzy_matched += 1
+            except KeyError:
+                continue
+
+        logger.info(f"  fuzzy_fill({source_key}): {fuzzy_matched} additional suburbs matched")
         return result
 
     def _merge_lga_keyed(self, result: pd.DataFrame,
