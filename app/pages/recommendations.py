@@ -370,7 +370,7 @@ def _render_ranked_list(df: pd.DataFrame, explanations: dict, weights: dict):
                         height=220,
                         showlegend=False,
                     )
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, use_container_width=True, key=f"dim_chart_{rank}")
                     st.caption("🟢 Real data  🟡 Proxy estimate  ⬜ No data fetched")
 
             # LLM explanation
@@ -467,4 +467,4 @@ def _render_radar_comparison(df: pd.DataFrame):
         showlegend=True,
         height=450,
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True, key="radar_comparison")
