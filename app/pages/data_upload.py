@@ -473,7 +473,7 @@ def show_api_connection_form():
         "vic_sales":          "https://www.consumer.vic.gov.au/housing/buying-and-selling-property/buying-property/researching-a-property/recent-sales-data",
         "qld_sales":          "https://www.titles.qld.gov.au/property-data/property-sales-data",
         "rental":             "https://www.fairtrading.nsw.gov.au/housing-and-property/renting/rental-bond-data",
-        "acara_schools":      "https://dataandreporting.acara.edu.au/Data-Access-Program",
+        "acara_schools":      "https://dataandreporting.blob.core.windows.net/anrdataportal/Data-Access-Program/School%20Profile%202025.xlsx",
         "domain_listings":    "https://developer.domain.com.au/",
         "domain_rental_avm":  "https://developer.domain.com.au/",
         "amenities":          "https://www.openstreetmap.org/",
@@ -567,12 +567,19 @@ def show_api_connection_form():
                     if schema_src:
                         provided = [c for c in _cols_for_source(schema_src) if c not in _JOIN_COLS]
                         if provided:
-                            cols_text = ", ".join(f"<code style='font-size:10px'>{c}</code>" for c in provided[:6])
-                            more = f" <small style='color:#888'>+{len(provided)-6} more</small>" if len(provided) > 6 else ""
+                            visible = provided[:6]
+                            hidden = provided[6:]
+                            cols_text = ", ".join(f"<code style='font-size:10px'>{c}</code>" for c in visible)
                             st.markdown(
-                                f"<small style='color:#888;font-size:11px'>📋 Provides:</small><br>{cols_text}{more}",
+                                f"<small style='color:#888;font-size:11px'>📋 Provides:</small><br>{cols_text}",
                                 unsafe_allow_html=True,
                             )
+                            if hidden:
+                                with st.popover(f"+{len(hidden)} more"):
+                                    st.markdown(
+                                        "**All columns provided by this source:**\n\n" +
+                                        "\n".join(f"- `{c}`" for c in provided)
+                                    )
                         else:
                             st.markdown("<small style='color:#aaa'>—</small>", unsafe_allow_html=True)
                     else:
