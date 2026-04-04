@@ -52,6 +52,8 @@ _STATE_ABBREV = {
 }
 
 # Keywords used for flexible column detection
+# Confirmed column names from School Profile 2025 (inspected April 2026)
+# Flexible keywords kept as fallback for future releases
 _SUBURB_KEYWORDS   = ["suburb", "town", "locality", "location"]
 _STATE_KEYWORDS    = ["state", "territory"]
 _ICSEA_KEYWORDS    = ["icsea"]
@@ -61,6 +63,16 @@ _SCHOOL_KEYWORDS   = ["school name", "school_name", "schoolname"]
 _READING_KEYWORDS  = ["reading", "read"]
 _NUMERACY_KEYWORDS = ["numeracy", "numer"]
 _YEAR_KEYWORDS     = ["year level", "year_level", "cohort", "grade"]
+
+# Exact column names from School Profile 2025 — used as priority lookup before keyword search
+_EXACT_COLS = {
+    "suburb":  "Suburb",
+    "state":   "State",
+    "icsea":   "ICSEA",
+    "sector":  "School Sector",
+    "type":    "School Type",
+    "school":  "School Name",
+}
 
 
 def _download_excel(urls: list, label: str) -> pd.DataFrame:
@@ -80,7 +92,17 @@ def _download_excel(urls: list, label: str) -> pd.DataFrame:
             if "html" in resp.headers.get("content-type", "").lower():
                 logger.warning(f"{label}: got HTML instead of Excel")
                 continue
-            df = pd.read_excel(io.BytesIO(resp.content), dtype=str)
+            xl = pd.ExcelFile(io.BytesIO(resp.content))
+            logger.info(f"{label}: sheets = {xl.sheet_names}")
+            # Skip cover/dictionary sheets — pick first sheet with actual school data
+            data_sheet = next(
+                (s for s in xl.sheet_names
+                 if any(x in s.lower() for x in ["profile", "school", "naplan", "result"])
+                 and not any(x in s.lower() for x in ["dictionary", "filter", "cover"])),
+                xl.sheet_names[-1]
+            )
+            logger.info(f"{label}: reading sheet '{data_sheet}'")
+            df = xl.parse(data_sheet, dtype=str)
             logger.info(f"{label}: loaded {len(df):,} rows — columns: {list(df.columns[:15])}")
             return df
         except Exception as e:
@@ -156,12 +178,20 @@ class ACARASchoolsFetcher(BaseFetcher):
 
         df = df.copy()
 
-        suburb_col  = _find_col(df, _SUBURB_KEYWORDS)
-        state_col   = _find_col_exclude(df, _STATE_KEYWORDS, ["postcode", "name"])
-        icsea_col   = _find_col(df, _ICSEA_KEYWORDS)
-        sector_col  = _find_col(df, _SECTOR_KEYWORDS)
-        type_col    = _find_col(df, _TYPE_KEYWORDS)
-        school_col  = _find_col(df, _SCHOOL_KEYWORDS)
+        # Try exact known column names first, fall back to keyword search
+        def _col(exact_key, keywords, exclude=None):
+            exact = _EXACT_COLS.get(exact_key)
+            if exact and exact in df.columns:
+                return exact
+            return (_find_col_exclude(df, keywords, exclude or [])
+                    if exclude else _find_col(df, keywords))
+
+        suburb_col  = _col("suburb", _SUBURB_KEYWORDS)
+        state_col   = _col("state",  _STATE_KEYWORDS, exclude=["postcode", "name"])
+        icsea_col   = _col("icsea",  _ICSEA_KEYWORDS)
+        sector_col  = _col("sector", _SECTOR_KEYWORDS)
+        type_col    = _col("type",   _TYPE_KEYWORDS)
+        school_col  = _col("school", _SCHOOL_KEYWORDS)
 
         logger.info(f"ACARA Profile cols → suburb={suburb_col}, state={state_col}, "
                     f"icsea={icsea_col}, sector={sector_col}, type={type_col}, "
