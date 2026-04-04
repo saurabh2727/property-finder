@@ -201,6 +201,103 @@ class OpenAIService:
             st.error(f"Error generating recommendations: {str(e)}")
             return self._create_fallback_recommendations()
 
+    def extract_intent_weights(self, query: str, customer_profile: Dict[str, Any]) -> Dict[str, float]:
+        """
+        Use LLM to parse a natural-language intent query and return dimension weights.
+
+        Returns a dict with keys: affordability, schools, crime, transport,
+        lifestyle, employment, investment — all values sum to 1.0.
+        Falls back to None on any error so caller can use mode weights instead.
+        """
+        from models.hybrid_recommender import DIMENSIONS
+        prompt = f"""
+You are a property preference analyst. A user described what matters to them when choosing a suburb.
+Convert their intent into importance weights across these 7 dimensions:
+{DIMENSIONS}
+
+User intent: "{query}"
+Customer profile summary: Primary purpose = {customer_profile.get('investment_goals', {}).get('primary_purpose', 'not specified')}
+
+Return ONLY valid JSON with exactly these keys and float values that sum to 1.0:
+{{"affordability": 0.0, "schools": 0.0, "crime": 0.0, "transport": 0.0, "lifestyle": 0.0, "employment": 0.0, "investment": 0.0}}
+"""
+        try:
+            response = self.client.chat.completions.create(
+                model=OPENAI_MODEL,
+                messages=[
+                    {"role": "system", "content": "You extract structured preference weights from natural language. Respond with valid JSON only."},
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=0.2,
+                max_tokens=200,
+                response_format={"type": "json_object"},
+            )
+            weights = json.loads(response.choices[0].message.content)
+            # Normalize to sum to 1
+            total = sum(weights.values()) or 1.0
+            return {k: v / total for k, v in weights.items() if k in DIMENSIONS}
+        except Exception:
+            return None
+
+    def generate_suburb_explanations(
+        self,
+        suburbs_df,
+        weights: Dict[str, float],
+        customer_profile: Dict[str, Any],
+        top_n: int = 5,
+    ) -> Dict[str, str]:
+        """
+        Generate a 2-sentence explanation for why each suburb was recommended.
+        Returns dict of {suburb_name: explanation_text}.
+        Sends all top_n suburbs in one API call to minimise cost.
+        """
+        if suburbs_df is None or suburbs_df.empty:
+            return {}
+
+        suburb_col = 'Suburb' if 'Suburb' in suburbs_df.columns else suburbs_df.columns[0]
+        dim_cols = [c for c in suburbs_df.columns if c.endswith('_dim_score')]
+
+        # Build compact suburb summaries
+        rows = []
+        for _, row in suburbs_df.head(top_n).iterrows():
+            name = row.get(suburb_col, 'Unknown')
+            dims = {c.replace('_dim_score', ''): round(float(row[c]), 2) for c in dim_cols if c in row}
+            price = row.get('Median Price', 'N/A')
+            yld   = row.get('Rental Yield on Houses', 'N/A')
+            score = round(float(row.get('final_score', 0)), 3)
+            rows.append(f"- {name}: score={score}, price={price}, yield={yld}%, dims={dims}")
+
+        suburb_summaries = "\n".join(rows)
+        purpose = customer_profile.get('investment_goals', {}).get('primary_purpose', 'investment')
+        top_weights = sorted(weights.items(), key=lambda x: -x[1])[:3]
+        top_weight_str = ", ".join(f"{k} ({v:.0%})" for k, v in top_weights if v > 0)
+
+        prompt = f"""
+You are a property investment advisor. Explain in exactly 2 sentences why each suburb suits this buyer.
+
+Buyer: {purpose} focus. Top priorities: {top_weight_str}.
+
+Suburbs:
+{suburb_summaries}
+
+Return JSON only: {{"suburb_name": "2-sentence explanation", ...}}
+Keep each explanation under 40 words. Be specific about the suburb's strengths.
+"""
+        try:
+            response = self.client.chat.completions.create(
+                model=OPENAI_MODEL,
+                messages=[
+                    {"role": "system", "content": "You write concise property suburb explanations. Respond with valid JSON only."},
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=0.5,
+                max_tokens=800,
+                response_format={"type": "json_object"},
+            )
+            return json.loads(response.choices[0].message.content)
+        except Exception:
+            return {}
+
     def _summarize_suburb_data(self, suburb_data, max_rows: int = 50) -> str:
         """
         Build a structured suburb data payload for GPT-4.
