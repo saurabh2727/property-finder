@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 
 from styles.global_styles import get_global_css, COLORS
-from components.property_card import render_hero_section, render_property_card
+from components.property_card import render_hero_section
 from utils.session_state import update_workflow_step, save_recommendations, render_workflow_progress
 from models.hybrid_recommender import (
     HybridRecommender, DIMENSIONS, DIM_LABELS, MODE_WEIGHTS, infer_mode,
