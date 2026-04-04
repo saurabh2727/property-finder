@@ -163,15 +163,27 @@ def render_recommendation_review():
 
                 with metric_col1:
                     if 'Median Price' in suburb:
-                        st.metric("Median Price", f"${suburb['Median Price']:,.0f}")
+                        try:
+                            st.metric("Median Price", f"${float(suburb['Median Price']):,.0f}")
+                        except (TypeError, ValueError):
+                            st.metric("Median Price", "N/A")
                     if 'Rental Yield on Houses' in suburb:
-                        st.metric("Rental Yield", f"{suburb['Rental Yield on Houses']:.1f}%")
+                        try:
+                            st.metric("Rental Yield", f"{float(suburb['Rental Yield on Houses']):.1f}%")
+                        except (TypeError, ValueError):
+                            st.metric("Rental Yield", "N/A")
 
                 with metric_col2:
                     if '10 yr Avg. Annual Growth' in suburb:
-                        st.metric("10yr Growth", f"{suburb['10 yr Avg. Annual Growth']:.1f}%")
+                        try:
+                            st.metric("10yr Growth", f"{float(suburb['10 yr Avg. Annual Growth']):.1f}%")
+                        except (TypeError, ValueError):
+                            st.metric("10yr Growth", "N/A")
                     if 'Distance (km) to CBD' in suburb:
-                        st.metric("Distance to CBD", f"{suburb['Distance (km) to CBD']:.0f} km")
+                        try:
+                            st.metric("Distance to CBD", f"{float(suburb['Distance (km) to CBD']):.0f} km")
+                        except (TypeError, ValueError):
+                            st.metric("Distance to CBD", "N/A")
 
                 # Display AI scores and reasoning if available
                 if 'AI_Score' in suburb:
