@@ -97,22 +97,41 @@ MODE_WEIGHTS: Dict[str, Dict[str, float]] = {
 
 
 def infer_mode(customer_profile: dict) -> str:
-    """Infer the best mode from the customer profile fields."""
-    purpose = customer_profile.get('investment_goals', {}).get('primary_purpose', '').lower()
+    """
+    Infer the best recommendation mode from the customer profile.
+
+    Decision order:
+    1. Investor signals (primary_purpose) → Growth vs Yield, tempered by risk_tolerance
+    2. Tax Benefits / not specified → Investor - Yield (income-focused)
+    3. Lifestyle signals → Family (high school quality) or Young Professional (high transport)
+    4. Default → Home Buyer
+    """
+    goals     = customer_profile.get('investment_goals', {})
     lifestyle = customer_profile.get('lifestyle_factors', {})
 
-    if 'growth' in purpose and 'rental' not in purpose and 'both' not in purpose:
-        return 'Investor - Growth'
-    if 'rental' in purpose and 'growth' not in purpose and 'both' not in purpose:
-        return 'Investor - Yield'
-    if 'both' in purpose or ('growth' in purpose and 'rental' in purpose):
-        return 'Investor - Growth'
+    purpose   = goals.get('primary_purpose', '').lower()
+    risk      = goals.get('risk_tolerance', '').lower()
 
-    school = lifestyle.get('school_quality', '').lower()
+    # Pure growth investor
+    if 'growth' in purpose and 'rental' not in purpose and 'both' not in purpose:
+        # Low risk → temper toward yield/balanced; high risk → full growth
+        return 'Investor - Yield' if risk == 'low' else 'Investor - Growth'
+
+    # Pure yield / income investor
+    if ('rental' in purpose or 'income' in purpose or 'tax' in purpose) \
+            and 'growth' not in purpose and 'both' not in purpose:
+        return 'Investor - Yield'
+
+    # Explicitly both / combined
+    if 'both' in purpose or ('growth' in purpose and 'rental' in purpose):
+        return 'Investor - Yield' if risk == 'low' else 'Investor - Growth'
+
+    # Lifestyle-driven (not an investor)
+    school    = lifestyle.get('school_quality', '').lower()
+    transport = lifestyle.get('transport_access', '').lower()
+
     if school == 'high':
         return 'Family'
-
-    transport = lifestyle.get('transport_access', '').lower()
     if transport == 'high':
         return 'Young Professional'
 
