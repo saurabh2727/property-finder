@@ -360,18 +360,24 @@ def render_price_trends_analysis(suburb_data):
             st.plotly_chart(fig, use_container_width=True)
 
     # Price statistics
-    price_stats = suburb_data['Median Price'].describe()
+    prices = pd.to_numeric(suburb_data['Median Price'], errors='coerce').dropna()
     st.markdown("#### 📊 Price Statistics")
+
+    def _fmt_price(val):
+        try:
+            return f"${float(val):,.0f}"
+        except (TypeError, ValueError):
+            return "N/A"
 
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.metric("Minimum", f"${price_stats['min']:,.0f}")
+        st.metric("Minimum", _fmt_price(prices.min()) if len(prices) else "N/A")
     with col2:
-        st.metric("Median", f"${price_stats['50%']:,.0f}")
+        st.metric("Median",  _fmt_price(prices.median()) if len(prices) else "N/A")
     with col3:
-        st.metric("Mean", f"${price_stats['mean']:,.0f}")
+        st.metric("Mean",    _fmt_price(prices.mean()) if len(prices) else "N/A")
     with col4:
-        st.metric("Maximum", f"${price_stats['max']:,.0f}")
+        st.metric("Maximum", _fmt_price(prices.max()) if len(prices) else "N/A")
 
 def render_yield_analysis_detailed(suburb_data):
     """Render detailed yield analysis"""
