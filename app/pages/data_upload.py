@@ -463,6 +463,60 @@ def show_api_connection_form():
     OSM_SOURCES = {"amenities", "transport", "healthcare", "walkability"}
     ALWAYS_EMPTY = {"building_approvals"}  # stub fetchers — expected to return 0 rows
 
+    # Official source URLs for each data source key
+    KEY_TO_URL = {
+        "seifa":              "https://www.abs.gov.au/statistics/people/people-and-communities/socio-economic-indexes-areas-seifa-australia/latest-release",
+        "erp":                "https://www.abs.gov.au/statistics/people/population/regional-population/latest-release",
+        "census":             "https://www.abs.gov.au/census/find-census-data/datapacks",
+        "building_approvals": "https://www.abs.gov.au/statistics/industry/building-and-construction/building-approvals-australia/latest-release",
+        "nsw_sales":          "https://www.valuergeneral.nsw.gov.au/land_values/summary_reports",
+        "vic_sales":          "https://www.consumer.vic.gov.au/housing/buying-and-selling-property/buying-property/researching-a-property/recent-sales-data",
+        "qld_sales":          "https://www.titles.qld.gov.au/property-data/property-sales-data",
+        "rental":             "https://www.fairtrading.nsw.gov.au/housing-and-property/renting/rental-bond-data",
+        "acara_schools":      "https://dataandreporting.acara.edu.au/Data-Access-Program",
+        "domain_listings":    "https://developer.domain.com.au/",
+        "domain_rental_avm":  "https://developer.domain.com.au/",
+        "amenities":          "https://www.openstreetmap.org/",
+        "transport":          "https://www.openstreetmap.org/",
+        "healthcare":         "https://www.openstreetmap.org/",
+        "crime":              "https://bocsar.nsw.gov.au/pages/bocsar/crime-statistics.html",
+        "employment":         "https://www.abs.gov.au/census/find-census-data/datapacks",
+        "flood_risk":         "https://www.ga.gov.au/scientific-topics/hazards/flood",
+        "walkability":        "https://www.openstreetmap.org/",
+    }
+
+    # Map category key → schema source constant for column lookup
+    from services.data_fetcher.column_schema import (
+        columns_for_source as _cols_for_source,
+        SOURCE_SEIFA, SOURCE_ERP, SOURCE_BUILDING, SOURCE_CENSUS,
+        SOURCE_NSW_SALES, SOURCE_VIC_SALES, SOURCE_QLD_SALES, SOURCE_RENTAL_GOV,
+        SOURCE_ACARA, SOURCE_DOMAIN_LISTINGS, SOURCE_DOMAIN_RENTAL,
+        SOURCE_AMENITIES, SOURCE_TRANSPORT, SOURCE_HEALTHCARE,
+        SOURCE_CRIME, SOURCE_EMPLOYMENT, SOURCE_FLOOD_RISK, SOURCE_WALKABILITY,
+    )
+    KEY_TO_SCHEMA_SOURCE = {
+        "seifa":              SOURCE_SEIFA,
+        "erp":                SOURCE_ERP,
+        "building_approvals": SOURCE_BUILDING,
+        "census":             SOURCE_CENSUS,
+        "nsw_sales":          SOURCE_NSW_SALES,
+        "vic_sales":          SOURCE_VIC_SALES,
+        "qld_sales":          SOURCE_QLD_SALES,
+        "rental":             SOURCE_RENTAL_GOV,
+        "acara_schools":      SOURCE_ACARA,
+        "domain_listings":    SOURCE_DOMAIN_LISTINGS,
+        "domain_rental_avm":  SOURCE_DOMAIN_RENTAL,
+        "amenities":          SOURCE_AMENITIES,
+        "transport":          SOURCE_TRANSPORT,
+        "healthcare":         SOURCE_HEALTHCARE,
+        "crime":              SOURCE_CRIME,
+        "employment":         SOURCE_EMPLOYMENT,
+        "flood_risk":         SOURCE_FLOOD_RISK,
+        "walkability":        SOURCE_WALKABILITY,
+    }
+    # Identity/join keys to exclude from the "provides" list
+    _JOIN_COLS = {"Suburb", "State", "suburb", "state", "sa2_code", "Region"}
+
     for cat in ALL_CATEGORIES:
         # Auto-expand if it's a core category or has fresh data
         has_fresh = any(
@@ -474,7 +528,7 @@ def show_api_connection_form():
         with st.expander(cat["label"], expanded=expand):
             for (key, name, desc, default, needs_manual) in cat["sources"]:
                 icon, badge_text, _ = _status_badge(key)
-                col_check, col_status = st.columns([2, 3])
+                col_check, col_status, col_cols = st.columns([2, 3, 3])
                 with col_check:
                     disabled = (key in OSM_SOURCES and not suburb_list)
                     selections[key] = st.checkbox(
@@ -496,11 +550,33 @@ def show_api_connection_form():
                         extra = "  <small style='color:#e07b00'>⚠️ needs base dataset</small>"
                     elif needs_manual:
                         extra = "  <small style='color:#e07b00'>⚠️ manual download required</small>"
+                    url = KEY_TO_URL.get(key, "")
+                    source_link = (
+                        f"<a href='{url}' target='_blank' style='color:#4a8fd4;font-size:11px;'>"
+                        f"↗ Official source</a>"
+                        if url else ""
+                    )
                     st.markdown(
                         f"<small style='color:#555'>{desc}</small><br>"
-                        f"<small>{icon} {badge_text}{extra}</small>",
+                        f"<small>{icon} {badge_text}{extra}</small><br>"
+                        f"{source_link}",
                         unsafe_allow_html=True,
                     )
+                with col_cols:
+                    schema_src = KEY_TO_SCHEMA_SOURCE.get(key)
+                    if schema_src:
+                        provided = [c for c in _cols_for_source(schema_src) if c not in _JOIN_COLS]
+                        if provided:
+                            cols_text = ", ".join(f"<code style='font-size:10px'>{c}</code>" for c in provided[:6])
+                            more = f" <small style='color:#888'>+{len(provided)-6} more</small>" if len(provided) > 6 else ""
+                            st.markdown(
+                                f"<small style='color:#888;font-size:11px'>📋 Provides:</small><br>{cols_text}{more}",
+                                unsafe_allow_html=True,
+                            )
+                        else:
+                            st.markdown("<small style='color:#aaa'>—</small>", unsafe_allow_html=True)
+                    else:
+                        st.markdown("<small style='color:#aaa'>—</small>", unsafe_allow_html=True)
 
     # ── Domain API key ────────────────────────────────────────────────────────
     use_domain = selections.get("domain_listings") or selections.get("domain_rental_avm")
