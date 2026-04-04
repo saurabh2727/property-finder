@@ -39,8 +39,14 @@ DIM_LABELS = {
 # neg: lower value = better score (score is inverted)
 DIM_COLUMNS: Dict[str, Dict[str, List[str]]] = {
     'affordability': {
+        # Primary: actual price/rent data (lower = more affordable)
+        # Proxy: seifa_irsd_decile (lower decile = more disadvantaged = typically more affordable)
+        #        median_personal_income_weekly (lower income area = typically lower prices)
+        # Note: proxies are weaker signals — flagged in has_data tracking
         'pos': [],
-        'neg': ['Median Price', 'median_rent_weekly_census', 'median_rent_weekly_actual'],
+        'neg': ['Median Price', 'median_rent_weekly_census', 'median_rent_weekly_actual',
+                'seifa_irsd_decile', 'seifa_irsad_decile', 'median_personal_income_weekly'],
+        'primary': ['Median Price', 'median_rent_weekly_census', 'median_rent_weekly_actual'],
     },
     'schools': {
         'pos': ['school_quality_score', 'school_icsea_median', 'naplan_mean_score', 'school_count'],
@@ -148,30 +154,67 @@ class SuburbIntelligenceEngine:
     """
 
     def compute(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Return df with {dim}_dim_score columns added (0–1 each)."""
+        """
+        Return df with per-dimension columns:
+          {dim}_dim_score    — 0–1 score (0.5 when no data)
+          {dim}_dim_has_data — 'real' | 'proxy' | 'none'
+        """
         result = df.copy()
         for dim, cols in DIM_COLUMNS.items():
+            primary_cols = cols.get('primary', [])  # highest-confidence columns
             components = []
+            primary_components = []
+
             for col in cols.get('pos', []):
                 if col in df.columns:
                     s = pd.to_numeric(df[col], errors='coerce')
-                    if s.notna().sum() > 1:
-                        components.append(self._minmax(s))
+                    if s.notna().sum() >= 1:
+                        norm = self._minmax(s)
+                        components.append(norm)
+                        if col in primary_cols:
+                            primary_components.append(norm)
             for col in cols.get('neg', []):
                 if col in df.columns:
                     s = pd.to_numeric(df[col], errors='coerce')
-                    if s.notna().sum() > 1:
-                        components.append(1 - self._minmax(s))
+                    if s.notna().sum() >= 1:
+                        norm = 1 - self._minmax(s)
+                        components.append(norm)
+                        if col in primary_cols:
+                            primary_components.append(norm)
 
-            if components:
-                dim_score = pd.concat(components, axis=1).mean(axis=1)
-                n_used = len(components)
+            has_primary_distinction = bool(primary_cols)  # True only for affordability
+
+            if has_primary_distinction:
+                # Affordability: distinguish real price data from proxy signals
+                if primary_components:
+                    primary_score = pd.concat(primary_components, axis=1).mean(axis=1)
+                    proxy_comps   = [c for i, c in enumerate(components)
+                                     if i >= len(primary_components)]
+                    if proxy_comps:
+                        proxy_score = pd.concat(proxy_comps, axis=1).mean(axis=1)
+                        dim_score   = primary_score * 0.7 + proxy_score * 0.3
+                    else:
+                        dim_score = primary_score
+                    data_quality = 'real'
+                elif components:
+                    # Only proxy columns available (no Median Price, no rent data)
+                    dim_score    = pd.concat(components, axis=1).mean(axis=1)
+                    data_quality = 'proxy'
+                else:
+                    dim_score    = pd.Series(0.5, index=df.index)
+                    data_quality = 'none'
             else:
-                dim_score = pd.Series(0.5, index=df.index)
-                n_used = 0
+                # All other dimensions: any data = real
+                if components:
+                    dim_score    = pd.concat(components, axis=1).mean(axis=1)
+                    data_quality = 'real'
+                else:
+                    dim_score    = pd.Series(0.5, index=df.index)
+                    data_quality = 'none'
 
-            result[f'{dim}_dim_score'] = dim_score.clip(0, 1).fillna(0.5)
-            logger.info(f"Dimension '{dim}': {n_used} column(s) used")
+            result[f'{dim}_dim_score']    = dim_score.clip(0, 1).fillna(0.5)
+            result[f'{dim}_dim_has_data'] = data_quality
+            logger.info(f"Dimension '{dim}': quality={data_quality}, {len(components)} column(s)")
 
         return result
 

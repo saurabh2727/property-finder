@@ -320,34 +320,58 @@ def _render_ranked_list(df: pd.DataFrame, explanations: dict, weights: dict):
                     st.caption(f"  Pref align:   {p_align:.2f}")
 
             with col_dims:
-                # Dimension score bars
+                # Dimension score bars — colour-coded by data quality
+                # real=RdYlGn, proxy=orange, none=grey
                 dim_rows = []
                 for dim in DIMENSIONS:
-                    col_name = f'{dim}_dim_score'
-                    if col_name in row:
-                        w = weights.get(dim, 0)
-                        dim_rows.append({
-                            'Dimension': DIM_LABELS[dim],
-                            'Score': round(float(row[col_name]), 2),
-                            'Weight': f"{w:.0%}",
-                        })
+                    score_col   = f'{dim}_dim_score'
+                    quality_col = f'{dim}_dim_has_data'
+                    if score_col not in row:
+                        continue
+                    quality = row.get(quality_col, 'none')
+                    score   = round(float(row[score_col]), 2)
+                    if quality == 'none':
+                        bar_color = '#cccccc'
+                        label     = 'No data'
+                    elif quality == 'proxy':
+                        bar_color = '#f59e0b'
+                        label     = f'{score:.2f} ~'
+                    else:
+                        # RdYlGn: red<0.4, yellow~0.5, green>0.6
+                        if score >= 0.6:
+                            bar_color = '#22c55e'
+                        elif score >= 0.4:
+                            bar_color = '#eab308'
+                        else:
+                            bar_color = '#ef4444'
+                        label = f'{score:.2f}'
+                    dim_rows.append({
+                        'Dimension': DIM_LABELS[dim],
+                        'Score':     score if quality != 'none' else 0,
+                        'Color':     bar_color,
+                        'Label':     label,
+                        'Quality':   quality,
+                    })
+
                 if dim_rows:
+                    import plotly.graph_objects as _go
                     dim_df = pd.DataFrame(dim_rows)
-                    fig = px.bar(
-                        dim_df, x='Score', y='Dimension', orientation='h',
-                        range_x=[0, 1],
-                        color='Score',
-                        color_continuous_scale='RdYlGn',
-                        height=220,
-                        text='Score',
-                    )
+                    fig = _go.Figure(_go.Bar(
+                        x=dim_df['Score'],
+                        y=dim_df['Dimension'],
+                        orientation='h',
+                        marker_color=dim_df['Color'],
+                        text=dim_df['Label'],
+                        textposition='outside',
+                    ))
                     fig.update_layout(
+                        xaxis=dict(range=[0, 1.15], title='Score'),
                         margin=dict(l=0, r=0, t=0, b=0),
-                        coloraxis_showscale=False,
+                        height=220,
                         showlegend=False,
                     )
-                    fig.update_traces(texttemplate='%{text:.2f}', textposition='outside')
                     st.plotly_chart(fig, use_container_width=True)
+                    st.caption("🟢 Real data  🟡 Proxy estimate  ⬜ No data fetched")
 
             # LLM explanation
             explanation = explanations.get(name)
@@ -365,12 +389,18 @@ def _render_dimension_breakdown(df: pd.DataFrame, weights: dict):
         st.info("No dimension scores available.")
         return
 
-    # Build display table
+    # Build display table — append * for proxy, — for no data
     rows = []
     for _, row in df.iterrows():
         r = {'Suburb': row.get(suburb_col, ''), 'State': row.get('State', '')}
         for dim, col in dim_cols.items():
-            r[DIM_LABELS[dim]] = round(float(row[col]), 2)
+            quality = row.get(f'{dim}_dim_has_data', 'real')
+            if quality == 'none':
+                r[DIM_LABELS[dim]] = '—'
+            elif quality == 'proxy':
+                r[DIM_LABELS[dim]] = f"{round(float(row[col]), 2)} ~"
+            else:
+                r[DIM_LABELS[dim]] = round(float(row[col]), 2)
         r['Final Score'] = round(float(row.get('final_score', 0)), 3)
         rows.append(r)
 
@@ -380,14 +410,17 @@ def _render_dimension_breakdown(df: pd.DataFrame, weights: dict):
         f"{DIM_LABELS[d]} {w:.0%}" for d, w in weights.items() if w > 0
     ))
 
+    numeric_dim_cols = [DIM_LABELS[d] for d in dim_cols
+                        if all(isinstance(r.get(DIM_LABELS[d]), float) for r in rows)]
     st.dataframe(
         table_df.style.background_gradient(
-            subset=[DIM_LABELS[d] for d in dim_cols],
+            subset=numeric_dim_cols,
             cmap='RdYlGn', vmin=0, vmax=1,
         ).background_gradient(subset=['Final Score'], cmap='Blues', vmin=0, vmax=1),
         use_container_width=True,
         hide_index=True,
     )
+    st.caption("~ = proxy estimate (indirect signal, lower confidence)  ·  — = no data fetched for this dimension")
 
 
 # ── Radar comparison chart ────────────────────────────────────────────────────
