@@ -40,6 +40,7 @@ class PropertyRecommendationEngine:
         self.training_data = None
         self.feature_importance_log = []
         self.shap_values = None
+        self.imputation_medians = {}  # col → median, computed at train time
 
         # Setup logging
         self._setup_logging()
@@ -269,8 +270,11 @@ class PropertyRecommendationEngine:
 
             self.feature_columns = numeric_features
 
-            # Prepare training data
-            X = df_features[numeric_features].fillna(0)
+            # Prepare training data — use median imputation so sparse API columns
+            # contribute real signal instead of being zeroed out
+            X_raw = df_features[numeric_features]
+            self.imputation_medians = X_raw.median().to_dict()
+            X = X_raw.fillna(self.imputation_medians).fillna(0)
 
             # Create composite target variable (investment attractiveness)
             y_investment = self._create_investment_target(df_features)
@@ -419,8 +423,8 @@ class PropertyRecommendationEngine:
             # Prepare features
             df_features = self.prepare_features(df, customer_profile)
 
-            # Select features
-            X = df_features[self.feature_columns].fillna(0)
+            # Select features — use training medians for consistent imputation
+            X = df_features[self.feature_columns].fillna(self.imputation_medians).fillna(0)
 
             # Scale features
             X_scaled = self.scalers['investment'].transform(X)
@@ -571,7 +575,7 @@ class PropertyRecommendationEngine:
                 suburb_data_row = suburb_data_row.to_frame().T
 
             # Select and scale features
-            X_row = suburb_data_row[self.feature_columns].fillna(0)
+            X_row = suburb_data_row[self.feature_columns].fillna(self.imputation_medians).fillna(0)
             X_row_scaled = self.scalers['investment'].transform(X_row)
 
             # Get SHAP values for this specific row

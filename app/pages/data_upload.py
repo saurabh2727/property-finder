@@ -659,7 +659,12 @@ def show_api_connection_form():
         st.markdown(f"**Summary:** {succeeded} sources with data · {failed} empty/failed · {len(ALWAYS_EMPTY & selected_keys)} stubs skipped")
 
     # ── Merge section ─────────────────────────────────────────────────────────
-    fetch_results = st.session_state.get('_api_fetch_results')
+    # Combine ALL previously fetched datasets (accumulated across multiple fetch runs)
+    # with the results from this fetch run, so nothing is lost between button presses.
+    fetch_results = {
+        **st.session_state.get('raw_fetched_datasets', {}),
+        **st.session_state.get('_api_fetch_results', {}),
+    }
     if fetch_results:
         st.markdown("---")
         st.markdown("### Merge into Suburb Dataset")
